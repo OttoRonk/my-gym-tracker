@@ -1,3 +1,16 @@
+You are completely right—getting stuck inside the active workout screen without a way to back out if you tapped the wrong template is a huge navigation flaw.
+
+I have added a sleek **"❮ Back"** button to the top left of the active workout screen. Because we don't want you to accidentally tap it and lose your data mid-workout, it includes a quick safety check: if you tap it, it will ask, *"Are you sure you want to exit? Unsaved sets will be lost."*
+
+I also went ahead and added a **"Cancel"** button to the bottom of the *Edit Template* drag-and-drop menu, just in case you open it and decide you don't actually want to make any changes.
+
+### Module 7: Navigation Fix
+
+1. Open your `my-gym-tracker` repository on GitHub.
+2. Edit your `index.html` file.
+3. **Delete everything**, paste this updated code, and commit the changes.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,7 +105,12 @@
     </div>
 
     <div id="workout-screen" class="hidden">
-        <h1 id="active-workout-title">Workout</h1>
+        
+        <div class="flex-between" style="margin-bottom: 20px;">
+            <button class="ghost" style="width:auto; padding:0; text-align:left; font-size:18px;" onclick="cancelWorkout()">❮ Back</button>
+            <h1 id="active-workout-title" style="margin:0; text-align:center; flex:1;">Workout</h1>
+            <div style="width: 60px;"></div> </div>
+
         <div id="active-blocks"></div>
         
         <button class="ghost" onclick="openAddExModal()">+ Add Exercise</button>
@@ -161,6 +179,7 @@
             <div id="drag-container" class="drag-list"></div>
             
             <div class="flex-row" style="margin-top:20px;">
+                <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
                 <button class="primary" style="margin-bottom:0;" onclick="saveTemplateOrder()">Save Changes</button>
             </div>
         </div>
@@ -229,7 +248,7 @@
         let currentWorkout = { templateId: null, exercises: [] };
         let mergeSourceContext = ""; 
         let manageTemplateId = null; 
-        let currentAddExMode = 'type'; // 'type' or 'list'
+        let currentAddExMode = 'type'; 
 
         // --- TEMPLATES ---
         function renderTemplates() {
@@ -299,9 +318,16 @@
             renderActiveWorkout();
         }
 
-        // Add Exercise Modal Customization
+        // NEW: Cancel Workout Function
+        function cancelWorkout() {
+            if(confirm("Are you sure you want to exit? Any un-checked sets will be lost.")) {
+                document.getElementById('workout-screen').classList.add('hidden');
+                document.getElementById('home-screen').classList.remove('hidden');
+                document.getElementById('main-nav').classList.remove('hidden');
+            }
+        }
+
         function openAddExModal() {
-            // Set up Autocomplete suggestions (Type Mode)
             const datalist = document.getElementById('master-ex-list');
             datalist.innerHTML = '';
             db.dictionary.forEach(ex => {
@@ -309,7 +335,6 @@
             });
             document.getElementById('new-ex-input').value = "";
 
-            // Set up Clickable List (List Mode)
             const listContainer = document.getElementById('modal-select-list');
             listContainer.innerHTML = '';
             if (db.dictionary.length === 0) {
@@ -324,7 +349,7 @@
                 });
             }
 
-            switchAddExMode('type'); // Default to Type Mode on open
+            switchAddExMode('type'); 
             document.getElementById('add-ex-modal').classList.remove('hidden');
         }
 
@@ -610,7 +635,7 @@
             alert(`Successfully merged into ${targetName}`);
         }
 
-        // --- MANAGE & REORDER TEMPLATE EXERCISES (ROBUST TOUCH EVENTS) ---
+        // --- MANAGE & REORDER TEMPLATE EXERCISES ---
         function openManageTemplate(templateId) {
             manageTemplateId = templateId;
             const template = db.templates.find(t => t.id === templateId);
@@ -659,7 +684,6 @@
             renderTemplates();
         }
 
-        // Robust mobile-optimized drag logic
         function initTouchDrag() {
             const container = document.getElementById('drag-container');
             let dragEl = null;
@@ -671,7 +695,6 @@
                 const item = e.target.closest('.drag-item');
                 dragEl = item;
                 
-                // Visual feedback for dragging state
                 dragEl.classList.add('dragging');
             }, { passive: true });
 
@@ -681,7 +704,6 @@
                 const touch = e.touches[0];
                 const currentY = touch.clientY;
                 
-                // Prevent screen scrolling during drag movement
                 e.preventDefault(); 
                 
                 const targetEl = getDragAfterElement(container, currentY);
@@ -690,7 +712,7 @@
                 } else {
                     container.insertBefore(dragEl, targetEl);
                 }
-            }, { passive: false }); // Needs false to allow e.preventDefault()
+            }, { passive: false }); 
 
             container.addEventListener('touchend', () => {
                 if (!dragEl) return;
@@ -768,3 +790,5 @@
     </script>
 </body>
 </html>
+
+```
