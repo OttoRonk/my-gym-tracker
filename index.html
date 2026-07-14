@@ -50,17 +50,16 @@
         /* Clean Master Exercises Tab Styles */
         .alphabet-header { font-size: 14px; color: var(--blue); font-weight: bold; padding: 15px 5px 5px 5px; border-bottom: 1px solid #2c2c2e; margin-bottom: 10px; text-transform: uppercase; }
         .dict-item { padding: 14px 8px; border-bottom: 1px solid #1c1c1e; display: flex; flex-direction: column; gap: 10px; }
-        .dict-item:last-child { border-bottom: none; }
         .dict-item-name { font-size: 17px; font-weight: 600; color: #fff; }
         .dict-actions { display: flex; gap: 8px; justify-content: flex-start; }
         
         /* Drag and Drop Reordering Styles */
         .drag-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .drag-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 14px 16px; border-radius: 12px; touch-action: none; user-select: none; position: relative; }
+        .drag-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 10px 14px; border-radius: 12px; touch-action: none; user-select: none; position: relative; }
         .drag-item.dragging { opacity: 0.5; background: #3a3a3c; border: 1px dashed var(--blue); transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.4); z-index: 10; }
-        .drag-handle { font-size: 20px; color: var(--blue); padding: 0 12px; cursor: grab; height: 30px; display: flex; align-items: center; }
+        .drag-handle { font-size: 20px; color: var(--blue); padding-right: 10px; cursor: grab; height: 30px; display: flex; align-items: center; }
         
-        /* Modal and Select layouts */
+        /* Modals and Select layouts */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);}
         .modal-content { width: 100%; max-width: 400px; margin-bottom: 10%; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
         
@@ -92,11 +91,11 @@
     </div>
 
     <div id="workout-screen" class="hidden">
-        
         <div class="flex-between" style="margin-bottom: 20px;">
             <button class="ghost" style="width:auto; padding:0; text-align:left; font-size:18px;" onclick="cancelWorkout()">❮ Back</button>
             <h1 id="active-workout-title" style="margin:0; text-align:center; flex:1;">Workout</h1>
-            <div style="width: 60px;"></div> </div>
+            <div style="width: 60px;"></div> 
+        </div>
 
         <div id="active-blocks"></div>
         
@@ -131,8 +130,7 @@
 
             <div id="mode-list-section" class="hidden">
                 <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">SELECT FROM MASTER LIST</label>
-                <div class="scrollable-list" id="modal-select-list">
-                    </div>
+                <div class="scrollable-list" id="modal-select-list"></div>
             </div>
             
             <div class="flex-row" style="margin-top:15px;">
@@ -161,7 +159,7 @@
     <div id="manage-template-modal" class="modal hidden">
         <div class="modal-content card" style="max-width:450px;">
             <h2 id="manage-template-title">Edit Template</h2>
-            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Press & drag ☰ to reorder, or tap ✕ to remove.</p>
+            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Use arrows <b>▲/▼</b> or drag <b>☰</b> to reorder exercises.</p>
             
             <div id="drag-container" class="drag-list"></div>
             
@@ -305,7 +303,6 @@
             renderActiveWorkout();
         }
 
-        // NEW: Cancel Workout Function
         function cancelWorkout() {
             if(confirm("Are you sure you want to exit? Any un-checked sets will be lost.")) {
                 document.getElementById('workout-screen').classList.add('hidden');
@@ -622,7 +619,7 @@
             alert(`Successfully merged into ${targetName}`);
         }
 
-        // --- MANAGE & REORDER TEMPLATE EXERCISES ---
+        // --- MANAGE & REORDER TEMPLATE EXERCISES (ARROWS + TOUCH-DRAG) ---
         function openManageTemplate(templateId) {
             manageTemplateId = templateId;
             const template = db.templates.find(t => t.id === templateId);
@@ -635,17 +632,38 @@
             template.exercises.forEach((exName, index) => {
                 container.innerHTML += `
                     <div class="drag-item" data-index="${index}">
-                        <div style="display:flex; align-items:center; width: 80%;">
+                        <div style="display:flex; align-items:center; width: 60%;">
                             <span class="drag-handle">☰</span>
                             <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${exName}</span>
                         </div>
-                        <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 10px;" onclick="removeExFromTemplate(${index})">✕</button>
+                        <div style="display:flex; gap: 4px; align-items:center;">
+                            <button class="small-edit" style="padding: 6px 10px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, -1)">▲</button>
+                            <button class="small-edit" style="padding: 6px 10px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, 1)">▼</button>
+                            <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 10px;" onclick="removeExFromTemplate(${index})">✕</button>
+                        </div>
                     </div>
                 `;
             });
 
             document.getElementById('manage-template-modal').classList.remove('hidden');
             initTouchDrag();
+        }
+
+        // NEW: Handles Arrow Button Swapping
+        function moveTemplateExercise(index, direction) {
+            const template = db.templates.find(t => t.id === manageTemplateId);
+            const targetIndex = index + direction;
+            
+            // Boundary checks
+            if (targetIndex < 0 || targetIndex >= template.exercises.length) return;
+            
+            // Swap elements in template memory
+            const temp = template.exercises[index];
+            template.exercises[index] = template.exercises[targetIndex];
+            template.exercises[targetIndex] = temp;
+            
+            updateStorage();
+            openManageTemplate(manageTemplateId); // Instantly re-render
         }
 
         function removeExFromTemplate(index) {
@@ -777,5 +795,3 @@
     </script>
 </body>
 </html>
-
-```
