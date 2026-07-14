@@ -27,13 +27,18 @@
         button.small-edit { padding: 6px 12px; background: #333; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin-left: 10px;}
         
         .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .flex-row { display: flex; gap: 10px; }
         
-        /* Updated Grid Layout to fit new buttons */
+        input, select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background-color: #2c2c2e; color: white; font-size: 16px; box-sizing: border-box; }
+        
         .set-grid { display: grid; grid-template-columns: 24px 1fr 50px 50px 24px 32px 24px; gap: 6px; align-items: center; margin-bottom: 10px; text-align: center; }
         .set-grid-header { font-size: 10px; color: var(--gray); font-weight: bold; text-transform: uppercase; }
         
         .set-index { font-weight: bold; color: var(--gray); background: #333; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
-        .set-history { font-size: 12px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        
+        /* Adjusted history block to allow multiple lines for the date */
+        .set-history { font-size: 13px; color: var(--gray); line-height: 1.2; text-align: left; padding-left: 4px; }
+        .set-history-date { font-size: 9px; color: #666; font-weight: normal; }
         
         .set-input { width: 100%; padding: 10px 4px; border-radius: 6px; border: none; background: #2c2c2e; color: white; font-size: 16px; text-align: center; }
         .set-input:disabled { background: transparent; color: var(--green); font-weight: bold; }
@@ -41,14 +46,19 @@
         .check-btn { width: 32px; height: 32px; border-radius: 6px; border: none; font-size: 16px; font-weight: bold; background: #333; color: white; margin: 0 auto;}
         .check-btn.checked { background: var(--green); color: black; }
         
-        /* New Icon Button Styles */
         .icon-btn { background: transparent; border: none; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0 auto; }
         
+        /* Modals */
+        .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);}
+        .modal-content { width: 100%; max-width: 400px; margin-bottom: 20%;}
+        
+        /* Nav */
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
-        .nav-btn { color: var(--gray); background: none; border: none; font-size: 16px; font-weight: bold; }
+        .nav-btn { color: var(--gray); background: none; border: none; font-size: 14px; font-weight: bold; }
         .nav-btn.active { color: var(--blue); }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; }
+        .dict-item { padding: 12px 0; border-bottom: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -65,8 +75,13 @@
         <h1 id="active-workout-title">Workout</h1>
         <div id="active-blocks"></div>
         
-        <button class="ghost" onclick="addExerciseToWorkout()">+ Add Exercise</button>
+        <button class="ghost" onclick="openAddExModal()">+ Add Exercise</button>
         <button class="secondary" onclick="endWorkout()" style="margin-top: 20px;">Finish Workout</button>
+    </div>
+
+    <div id="exercises-screen" class="hidden">
+        <h1>Master Exercises</h1>
+        <div class="card" id="dictionary-list"></div>
     </div>
 
     <div id="history-screen" class="hidden">
@@ -74,8 +89,39 @@
         <div class="card" id="history-list"></div>
     </div>
 
+    <div id="add-ex-modal" class="modal hidden">
+        <div class="modal-content card">
+            <h2>Add Exercise</h2>
+            <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">EXERCISE NAME</label>
+            <input type="text" id="new-ex-input" list="master-ex-list" placeholder="Type or select from list...">
+            <datalist id="master-ex-list"></datalist>
+            
+            <div class="flex-row" style="margin-top:15px;">
+                <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
+                <button class="primary" style="margin-bottom:0;" onclick="confirmAddExercise()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="merge-modal" class="modal hidden">
+        <div class="modal-content card">
+            <h2>Merge Exercise</h2>
+            <p style="font-size: 14px; color: var(--gray); margin-bottom: 15px;">
+                Merging <strong id="merge-source-label" style="color: white;"></strong> into another exercise will update all past history and templates to the new name.
+            </p>
+            <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">TARGET EXERCISE</label>
+            <select id="merge-target-select"></select>
+            
+            <div class="flex-row" style="margin-top:15px;">
+                <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
+                <button class="primary" style="margin-bottom:0; background-color: var(--orange);" onclick="confirmMerge()">Merge</button>
+            </div>
+        </div>
+    </div>
+
     <div class="nav-bar" id="main-nav">
         <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">Home</button>
+        <button class="nav-btn" id="nav-exercises" onclick="switchTab('exercises')">Exercises</button>
         <button class="nav-btn" id="nav-history" onclick="switchTab('history')">History</button>
     </div>
 
@@ -89,25 +135,47 @@
             templates: [
                 { id: 1, name: "Push Day", exercises: ["Bench Press", "Overhead Press"] },
                 { id: 2, name: "Pull Day", exercises: ["Pull-ups", "Barbell Row"] }
-            ] 
+            ],
+            dictionary: []
         };
 
+        // Auto-build dictionary if it's empty or missing
+        if (!db.dictionary || db.dictionary.length === 0) {
+            let uniqueEx = new Set();
+            if(db.templates) db.templates.forEach(t => t.exercises.forEach(e => uniqueEx.add(e)));
+            if(db.sets) db.sets.forEach(s => uniqueEx.add(s.name));
+            db.dictionary = Array.from(uniqueEx).sort();
+        }
+
         function updateStorage() {
+            // Keep dictionary clean and sorted
+            db.dictionary = Array.from(new Set(db.dictionary)).sort();
             localStorage.setItem('gymDB', JSON.stringify(db));
         }
 
-        // Contextual History now returns both the text and the previous comment
+        // --- DATE FORMATTER ---
+        function formatDisplayDate(dateStr, timestamp) {
+            let d = timestamp ? new Date(timestamp) : new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr; 
+            return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+        }
+
         function getSetHistoryData(exName, setNum) {
             const logs = db.sets.filter(s => s.name.toLowerCase() === exName.toLowerCase());
-            if (logs.length === 0) return { text: "-", comment: null };
+            if (logs.length === 0) return { text: "-", dateStr: "", comment: null };
             
             const lastDate = logs[0].date; 
             const specificSet = logs.find(s => s.date === lastDate && s.setNumber === setNum);
             
             if (specificSet) {
-                return { text: `${specificSet.weight}x${specificSet.reps}`, comment: specificSet.comment || null };
+                const prettyDate = formatDisplayDate(specificSet.date, specificSet.timestamp);
+                return { 
+                    text: `${specificSet.weight}x${specificSet.reps}`, 
+                    dateStr: prettyDate,
+                    comment: specificSet.comment || null 
+                };
             }
-            return { text: "-", comment: null };
+            return { text: "-", dateStr: "", comment: null };
         }
 
         /* =========================================
@@ -115,8 +183,9 @@
            ========================================= */
         
         let currentWorkout = { templateId: null, exercises: [] };
+        let mergeSourceContext = ""; // Tracks which exercise is being merged
 
-        // --- TEMPLATE MANAGEMENT ---
+        // --- TEMPLATES ---
         function renderTemplates() {
             const list = document.getElementById('template-list');
             list.innerHTML = '';
@@ -160,7 +229,6 @@
             const template = db.templates.find(t => t.id === templateId);
             document.getElementById('active-workout-title').innerText = template.name;
             
-            // Build the Active State (Now defaults to TWO sets)
             currentWorkout.templateId = template.id;
             currentWorkout.exercises = template.exercises.map(exName => {
                 return { 
@@ -179,16 +247,35 @@
             renderActiveWorkout();
         }
 
-        function addExerciseToWorkout() {
-            const exName = prompt("New Exercise Name:");
+        // Modal for Adding Exercises
+        function openAddExModal() {
+            const datalist = document.getElementById('master-ex-list');
+            datalist.innerHTML = '';
+            db.dictionary.forEach(ex => {
+                datalist.innerHTML += `<option value="${ex}">`;
+            });
+            document.getElementById('new-ex-input').value = "";
+            document.getElementById('add-ex-modal').classList.remove('hidden');
+        }
+
+        function closeModals() {
+            document.getElementById('add-ex-modal').classList.add('hidden');
+            document.getElementById('merge-modal').classList.add('hidden');
+        }
+
+        function confirmAddExercise() {
+            const exName = document.getElementById('new-ex-input').value.trim();
             if(!exName) return;
             
-            // Save to permanent database template
+            // Add to dictionary if new
+            if (!db.dictionary.includes(exName)) db.dictionary.push(exName);
+
+            // Add to template
             const template = db.templates.find(t => t.id === currentWorkout.templateId);
             template.exercises.push(exName);
             updateStorage();
             
-            // Push to current live screen (Defaults to TWO sets)
+            // Add to live screen
             currentWorkout.exercises.push({ 
                 name: exName, 
                 sets: [ 
@@ -196,7 +283,10 @@
                     { weight: "", reps: "", comment: "", loggedId: null }
                 ] 
             });
+            
+            closeModals();
             renderActiveWorkout();
+            renderExercisesTab(); // Keep background tabs synced
         }
 
         function renderActiveWorkout() {
@@ -214,15 +304,18 @@
                     const lockState = isLogged ? 'disabled' : '';
                     const checkClass = isLogged ? 'checked' : '';
                     
-                    // Comment Icon Logic: Blue if commented today, Orange if commented last time, Gray otherwise
                     let commentColor = "var(--gray)";
                     if (set.comment) commentColor = "var(--blue)";
                     else if (historyData.comment) commentColor = "var(--orange)";
                     
+                    // Formatting history to include date below weight
+                    let historyHTML = `<strong>${historyData.text}</strong>`;
+                    if(historyData.dateStr) historyHTML += `<br><span class="set-history-date">${historyData.dateStr}</span>`;
+
                     setsHTML += `
                         <div class="set-grid">
                             <div class="set-index">${setNum}</div>
-                            <div class="set-history">${historyData.text}</div>
+                            <div class="set-history">${historyHTML}</div>
                             <input type="number" class="set-input" placeholder="kg" id="w-${exIndex}-${setIndex}" value="${set.weight}" oninput="updateState(${exIndex}, ${setIndex}, 'weight', this.value)" ${lockState}>
                             <input type="number" class="set-input" placeholder="reps" id="r-${exIndex}-${setIndex}" value="${set.reps}" oninput="updateState(${exIndex}, ${setIndex}, 'reps', this.value)" ${lockState}>
                             
@@ -237,7 +330,7 @@
                     <div class="card">
                         <h2>${ex.name}</h2>
                         <div class="set-grid set-grid-header">
-                            <div>#</div><div>PREV</div><div>KG</div><div>REP</div><div></div><div></div><div></div>
+                            <div>#</div><div style="text-align:left; padding-left:4px;">PREV</div><div>KG</div><div>REP</div><div></div><div></div><div></div>
                         </div>
                         ${setsHTML}
                         <button class="ghost" onclick="addSetRow(${exIndex})">+ Add Set</button>
@@ -255,7 +348,6 @@
             renderActiveWorkout();
         }
 
-        // Removing a set row
         function removeSetRow(exIndex, setIndex) {
             const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
             if (setObj.loggedId) {
@@ -266,21 +358,19 @@
             renderActiveWorkout();
         }
 
-        // Handling the comment prompt
         function handleComment(exIndex, setIndex) {
             const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
             const setNum = setIndex + 1;
             const exName = currentWorkout.exercises[exIndex].name;
             const pastData = getSetHistoryData(exName, setNum);
             
-            let promptText = "Add a comment for this set (e.g., RPE 8, felt heavy):";
+            let promptText = "Add a comment for this set:";
             if (pastData.comment) {
-                promptText = `LAST TIME: "${pastData.comment}"\n\nAdd your comment for today:`;
+                promptText = `LAST TIME (${pastData.dateStr}): "${pastData.comment}"\n\nAdd your comment for today:`;
             }
             
             const newComment = prompt(promptText, setObj.comment || "");
-            
-            if (newComment !== null) { // null means they hit cancel
+            if (newComment !== null) { 
                 setObj.comment = newComment;
                 renderActiveWorkout(); 
             }
@@ -290,12 +380,10 @@
             const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
             
             if (setObj.loggedId) {
-                // UN-LOG
                 db.sets = db.sets.filter(s => s.id !== setObj.loggedId);
                 updateStorage();
                 setObj.loggedId = null;
             } else {
-                // LOG
                 const w = setObj.weight;
                 const r = setObj.reps;
                 if (!r) return alert("Please enter your reps.");
@@ -306,10 +394,15 @@
                     name: currentWorkout.exercises[exIndex].name,
                     weight: w || 0,
                     reps: r,
-                    comment: setObj.comment || "", // Save comment to DB
+                    comment: setObj.comment || "",
                     setNumber: setIndex + 1,
-                    date: new Date().toLocaleDateString()
+                    date: new Date().toLocaleDateString(),
+                    timestamp: newId // Added timestamp for date formatting
                 });
+                
+                if (!db.dictionary.includes(currentWorkout.exercises[exIndex].name)) {
+                    db.dictionary.push(currentWorkout.exercises[exIndex].name);
+                }
                 updateStorage();
                 setObj.loggedId = newId;
             }
@@ -321,6 +414,107 @@
             document.getElementById('home-screen').classList.remove('hidden');
             document.getElementById('main-nav').classList.remove('hidden');
             refreshHistoryUI(); 
+            renderExercisesTab();
+        }
+
+        // --- EXERCISE DICTIONARY MANAGEMENT ---
+        function renderExercisesTab() {
+            const list = document.getElementById('dictionary-list');
+            list.innerHTML = '';
+            
+            if (db.dictionary.length === 0) {
+                list.innerHTML = "<p style='color:var(--gray);'>No exercises saved yet.</p>";
+                return;
+            }
+
+            db.dictionary.forEach(ex => {
+                list.innerHTML += `
+                    <div class="dict-item flex-between">
+                        <strong style="font-size:16px;">${ex}</strong>
+                        <div>
+                            <button class="small-edit" onclick="renameDictExercise('${ex.replace(/'/g, "\\'")}')">✎ Rename</button>
+                            <button class="small-edit" style="background:var(--orange); color:black;" onclick="openMergeModal('${ex.replace(/'/g, "\\'")}')">Combine</button>
+                            <button class="small-edit" style="background:rgba(255, 69, 58, 0.2); color:var(--red);" onclick="deleteDictExercise('${ex.replace(/'/g, "\\'")}')">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renameDictExercise(oldName) {
+            const newName = prompt(`Rename '${oldName}' to:`, oldName);
+            if (!newName || newName === oldName) return;
+
+            // Update Dictionary
+            db.dictionary = db.dictionary.filter(e => e !== oldName);
+            if (!db.dictionary.includes(newName)) db.dictionary.push(newName);
+
+            // Update Sets
+            db.sets.forEach(s => { if (s.name === oldName) s.name = newName; });
+
+            // Update Templates
+            db.templates.forEach(t => {
+                const idx = t.exercises.indexOf(oldName);
+                if (idx !== -1) t.exercises[idx] = newName;
+            });
+
+            updateStorage();
+            renderExercisesTab();
+            refreshHistoryUI();
+        }
+
+        function deleteDictExercise(exName) {
+            if(confirm(`Remove '${exName}' from master list?\n\n(This will not delete past history, but removes it from auto-complete).`)) {
+                db.dictionary = db.dictionary.filter(e => e !== exName);
+                updateStorage();
+                renderExercisesTab();
+            }
+        }
+
+        function openMergeModal(sourceName) {
+            mergeSourceContext = sourceName;
+            document.getElementById('merge-source-label').innerText = sourceName;
+            
+            const select = document.getElementById('merge-target-select');
+            select.innerHTML = '<option value="">-- Select target exercise --</option>';
+            
+            db.dictionary.forEach(ex => {
+                if (ex !== sourceName) {
+                    select.innerHTML += `<option value="${ex}">${ex}</option>`;
+                }
+            });
+            
+            document.getElementById('merge-modal').classList.remove('hidden');
+        }
+
+        function confirmMerge() {
+            const targetName = document.getElementById('merge-target-select').value;
+            if(!targetName) return alert("Please select a target exercise.");
+            
+            // 1. Update Sets
+            db.sets.forEach(s => { if (s.name === mergeSourceContext) s.name = targetName; });
+
+            // 2. Update Templates
+            db.templates.forEach(t => {
+                const idx = t.exercises.indexOf(mergeSourceContext);
+                if (idx !== -1) {
+                    // Check if target is already in this template to avoid duplicates
+                    if (t.exercises.includes(targetName)) {
+                        t.exercises.splice(idx, 1); 
+                    } else {
+                        t.exercises[idx] = targetName; 
+                    }
+                }
+            });
+
+            // 3. Remove old name from dictionary
+            db.dictionary = db.dictionary.filter(e => e !== mergeSourceContext);
+            
+            updateStorage();
+            closeModals();
+            renderExercisesTab();
+            refreshHistoryUI();
+            alert(`Successfully merged into ${targetName}`);
         }
 
         // --- HISTORY ---
@@ -328,11 +522,12 @@
             const historyList = document.getElementById('history-list');
             historyList.innerHTML = '';
             db.sets.forEach(set => {
-                // Add the comment into the history view if it exists
                 let commentHTML = '';
                 if (set.comment) {
                     commentHTML = `<div style="font-size:12px; color:var(--orange); font-style:italic; margin-top:4px;">💬 ${set.comment}</div>`;
                 }
+                
+                const prettyDate = formatDisplayDate(set.date, set.timestamp);
 
                 historyList.innerHTML += `
                     <div class="history-item">
@@ -340,7 +535,7 @@
                             <strong style="color:var(--blue);">${set.name}</strong> <span style="color:var(--gray); font-size:12px;">(Set ${set.setNumber})</span><br>
                             <span style="font-size:14px;">${set.weight}kg x ${set.reps} reps</span>
                             ${commentHTML}
-                            <div style="font-size:12px; color:var(--gray); margin-top:4px;">${set.date}</div>
+                            <div style="font-size:12px; color:var(--gray); margin-top:4px;">${prettyDate}</div>
                         </div>
                         <button class="danger" onclick="deleteHistorySet(${set.id})">Delete</button>
                     </div>
@@ -356,10 +551,14 @@
             }
         }
 
+        // --- NAVIGATION ---
         function switchTab(tab) {
             document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('exercises-screen').classList.add('hidden');
             document.getElementById('history-screen').classList.add('hidden');
+            
             document.getElementById('nav-home').classList.remove('active');
+            document.getElementById('nav-exercises').classList.remove('active');
             document.getElementById('nav-history').classList.remove('active');
 
             document.getElementById(`${tab}-screen`).classList.remove('hidden');
@@ -368,6 +567,7 @@
 
         // Initialize App
         renderTemplates();
+        renderExercisesTab();
         refreshHistoryUI();
     </script>
 </body>
