@@ -6,142 +6,197 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gym Tracker</title>
+    
     <style>
-        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --red: #ff453a; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 80px; }
-        h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
-        .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
+        /* =========================================
+           MODULE 1: STYLES (CSS)
+           Change colors, sizes, and layout here.
+           ========================================= */
+        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --gray: #8e8e93; --red: #ff453a; }
         
-        label { font-size: 12px; color: #8e8e93; font-weight: bold; display: block; margin-bottom: 5px; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 90px; }
+        h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
+        h2 { font-size: 20px; margin: 0 0 5px 0; }
+        
+        .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
+        label { font-size: 12px; color: var(--gray); font-weight: bold; display: block; margin-bottom: 5px; }
         input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background-color: #2c2c2e; color: white; font-size: 16px; box-sizing: border-box; }
         
         .flex-row { display: flex; gap: 10px; }
-        button.primary { width: 100%; padding: 14px; background-color: var(--blue); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
+        
+        button.primary { width: 100%; padding: 14px; background-color: var(--blue); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 10px;}
+        button.secondary { width: 100%; padding: 14px; background-color: #333; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
+        button.log-btn { width: 100%; padding: 12px; background-color: rgba(10, 132, 255, 0.15); color: var(--blue); border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
         button.danger { padding: 8px 12px; background-color: rgba(255, 69, 58, 0.2); color: var(--red); border: none; border-radius: 6px; font-size: 14px; font-weight: bold; }
         
-        /* Navigation Bar */
-        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
-        .nav-btn { color: #8e8e93; background: none; border: none; font-size: 16px; font-weight: bold; }
-        .nav-btn.active { color: var(--blue); }
-
-        /* Hide sections */
-        .hidden { display: none; }
+        .history-text { font-size: 13px; color: #32d74b; margin-bottom: 15px; font-weight: bold;}
+        .logged-sets { margin-top: 10px; font-size: 14px; color: var(--gray); }
         
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
+        .nav-btn { color: var(--gray); background: none; border: none; font-size: 16px; font-weight: bold; }
+        .nav-btn.active { color: var(--blue); }
+        .hidden { display: none; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; }
     </style>
 </head>
 <body>
 
-    <div id="workout-screen">
-        <h1>Log Exercise</h1>
-        <div class="card">
-            <label>EXERCISE NAME</label>
-            <input type="text" id="ex-name" list="exercise-dict" placeholder="Start typing...">
-            
-            <datalist id="exercise-dict"></datalist>
-
-            <div class="flex-row">
-                <div style="flex: 1;">
-                    <label>WEIGHT</label>
-                    <input type="number" id="ex-weight" placeholder="0">
-                </div>
-                <div style="flex: 1;">
-                    <label>REPS</label>
-                    <input type="number" id="ex-reps" placeholder="0">
-                </div>
+    <div id="home-screen">
+        <h1>Start Workout</h1>
+        <div id="template-list">
             </div>
-            <button class="primary" onclick="saveSet()">Save Set</button>
-        </div>
+    </div>
+
+    <div id="workout-screen" class="hidden">
+        <h1 id="active-workout-title">Workout</h1>
+        <div id="active-blocks">
+            </div>
+        <button class="secondary" onclick="endWorkout()">Finish Workout</button>
     </div>
 
     <div id="history-screen" class="hidden">
-        <h1>Workout History</h1>
+        <h1>All History</h1>
         <div class="card" id="history-list">
             </div>
     </div>
 
-    <div class="nav-bar">
-        <button class="nav-btn active" id="nav-workout" onclick="switchTab('workout')">Workout</button>
+    <div class="nav-bar" id="main-nav">
+        <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">Home</button>
         <button class="nav-btn" id="nav-history" onclick="switchTab('history')">History</button>
     </div>
 
     <script>
-        // --- DATABASE ENGINE ---
-        // Load data from iPhone memory, or create empty arrays if it's the first time
-        let db = JSON.parse(localStorage.getItem('gymDB')) || { sets: [], dictionary: [] };
+        /* =========================================
+           MODULE 3: DATABASE ENGINE (JavaScript)
+           Handles saving and loading from iPhone memory.
+           ========================================= */
+           
+        // Load data from memory, or set up defaults if it's the first time
+        let db = JSON.parse(localStorage.getItem('gymDB')) || { 
+            sets: [], 
+            templates: [
+                { id: 1, name: "Push Day", exercises: ["Bench Press", "Overhead Press", "Tricep Extensions"] },
+                { id: 2, name: "Pull Day", exercises: ["Pull-ups", "Barbell Row", "Bicep Curls"] },
+                { id: 3, name: "Leg Day", exercises: ["Squat", "Leg Press", "Calf Raises"] }
+            ] 
+        };
 
+        // This function is the "Save Button" for your phone's hard drive
         function updateStorage() {
             localStorage.setItem('gymDB', JSON.stringify(db));
-            refreshDictionaryUI();
-            refreshHistoryUI();
         }
 
-        // --- ACTIONS ---
-        function saveSet() {
-            const name = document.getElementById('ex-name').value.trim();
-            const weight = document.getElementById('ex-weight').value;
-            const reps = document.getElementById('ex-reps').value;
-
-            if (!name || !reps) return alert("Exercise name and reps are required!");
-
-            // 1. Update the Auto-complete Dictionary if it's a new exercise
-            if (!db.dictionary.includes(name)) {
-                db.dictionary.push(name);
-                db.dictionary.sort(); // Keep it alphabetical
+        // Fetches previous weight/reps for a specific exercise
+        function getLastLog(exerciseName) {
+            const lastSet = db.sets.find(set => set.name.toLowerCase() === exerciseName.toLowerCase());
+            if (lastSet) {
+                return `Last: ${lastSet.weight}kg x ${lastSet.reps} (${lastSet.date})`;
             }
+            return "No previous history";
+        }
 
-            // 2. Create the data point with a unique ID (timestamp)
+
+        /* =========================================
+           MODULE 4: APP LOGIC (JavaScript)
+           What happens when you click buttons.
+           ========================================= */
+
+        // Draws the main template buttons
+        function renderTemplates() {
+            const list = document.getElementById('template-list');
+            list.innerHTML = '';
+            db.templates.forEach(temp => {
+                list.innerHTML += `<button class="primary" onclick="startWorkout(${temp.id})">${temp.name}</button>`;
+            });
+        }
+
+        // Opens a template and creates the input boxes
+        function startWorkout(templateId) {
+            const template = db.templates.find(t => t.id === templateId);
+            document.getElementById('active-workout-title').innerText = template.name;
+            
+            const blocksDiv = document.getElementById('active-blocks');
+            blocksDiv.innerHTML = '';
+
+            template.exercises.forEach((exName, index) => {
+                const historyText = getLastLog(exName);
+                
+                blocksDiv.innerHTML += `
+                    <div class="card">
+                        <h2>${exName}</h2>
+                        <div class="history-text" id="history-${index}">${historyText}</div>
+                        
+                        <div class="flex-row">
+                            <div style="flex: 1;">
+                                <label>WEIGHT</label>
+                                <input type="number" id="weight-${index}" placeholder="0">
+                            </div>
+                            <div style="flex: 1;">
+                                <label>REPS</label>
+                                <input type="number" id="reps-${index}" placeholder="0">
+                            </div>
+                        </div>
+                        <button class="log-btn" onclick="logSet('${exName}', ${index})">Log Set</button>
+                        <div class="logged-sets" id="logs-${index}"></div>
+                    </div>
+                `;
+            });
+
+            // Switch to workout screen
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('main-nav').classList.add('hidden');
+            document.getElementById('workout-screen').classList.remove('hidden');
+        }
+
+        // Saves a single set to the database
+        function logSet(exName, index) {
+            const weightInput = document.getElementById(`weight-${index}`);
+            const repsInput = document.getElementById(`reps-${index}`);
+            const weight = weightInput.value;
+            const reps = repsInput.value;
+
+            if (!reps) return alert("Please enter the reps!");
+
+            // Create data package
             const newSet = {
-                id: Date.now(), 
-                name: name,
+                id: Date.now(),
+                name: exName,
                 weight: weight || 0,
                 reps: reps,
                 date: new Date().toLocaleDateString()
             };
-
-            // 3. Save to database
-            db.sets.unshift(newSet); // Add to beginning of list
+            
+            // Save to top of list
+            db.sets.unshift(newSet);
             updateStorage();
 
-            // Clear inputs for the next set
-            document.getElementById('ex-weight').value = '';
-            document.getElementById('ex-reps').value = '';
-            alert("Saved to Database!");
+            // Show success on screen instantly
+            document.getElementById(`logs-${index}`).innerHTML += `✓ ${weight}kg x ${reps}<br>`;
+            document.getElementById(`history-${index}`).innerText = `Last: ${weight}kg x ${reps} (Today)`;
+            
+            // Clear inputs for next set
+            weightInput.value = '';
+            repsInput.value = '';
         }
 
-        function deleteSet(idToDelete) {
-            if(confirm("Delete this set?")) {
-                // Filter out the one set that matches the ID
-                db.sets = db.sets.filter(set => set.id !== idToDelete);
-                updateStorage();
-            }
+        // Closes workout and returns to home
+        function endWorkout() {
+            document.getElementById('workout-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+            document.getElementById('main-nav').classList.remove('hidden');
+            refreshHistoryUI(); 
         }
 
-        // --- UI UPDATES ---
-        function refreshDictionaryUI() {
-            const datalist = document.getElementById('exercise-dict');
-            datalist.innerHTML = '';
-            db.dictionary.forEach(ex => {
-                datalist.innerHTML += `<option value="${ex}">`;
-            });
-        }
-
+        // Updates the History tab list
         function refreshHistoryUI() {
             const historyList = document.getElementById('history-list');
             historyList.innerHTML = '';
-            
-            if (db.sets.length === 0) {
-                historyList.innerHTML = "<p style='color:#8e8e93;'>No sets logged yet.</p>";
-                return;
-            }
-
             db.sets.forEach(set => {
                 historyList.innerHTML += `
                     <div class="history-item">
                         <div>
                             <strong style="color:var(--blue);">${set.name}</strong><br>
                             <span style="font-size:14px;">${set.weight}kg x ${set.reps} reps</span>
-                            <div style="font-size:12px; color:#8e8e93;">${set.date}</div>
                         </div>
                         <button class="danger" onclick="deleteSet(${set.id})">Delete</button>
                     </div>
@@ -149,18 +204,28 @@
             });
         }
 
+        // Deletes a specific set
+        function deleteSet(idToDelete) {
+            if(confirm("Delete this set?")) {
+                db.sets = db.sets.filter(set => set.id !== idToDelete);
+                updateStorage();
+                refreshHistoryUI();
+            }
+        }
+
+        // Handles the bottom navigation bar
         function switchTab(tab) {
-            document.getElementById('workout-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('history-screen').classList.add('hidden');
-            document.getElementById('nav-workout').classList.remove('active');
+            document.getElementById('nav-home').classList.remove('active');
             document.getElementById('nav-history').classList.remove('active');
 
             document.getElementById(`${tab}-screen`).classList.remove('hidden');
             document.getElementById(`nav-${tab}`).classList.add('active');
         }
 
-        // Run these once when the app opens
-        refreshDictionaryUI();
+        // Boot up the app when opened
+        renderTemplates();
         refreshHistoryUI();
     </script>
 </body>
