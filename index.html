@@ -24,19 +24,18 @@
         button.secondary { width: 100%; padding: 14px; background-color: #333; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 10px;}
         button.ghost { width: 100%; padding: 10px; background-color: transparent; color: var(--blue); border: none; font-size: 16px; font-weight: bold; }
         button.danger { padding: 8px 12px; background-color: rgba(255, 69, 58, 0.2); color: var(--red); border: none; border-radius: 6px; font-size: 14px; font-weight: bold; }
-        button.small-edit { padding: 6px 12px; background: #333; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin-left: 10px;}
+        button.small-edit { padding: 8px 12px; background: #2c2c2e; color: var(--blue); border: none; border-radius: 8px; font-size: 13px; font-weight: 600; }
         
         .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .flex-row { display: flex; gap: 10px; }
         
         input, select { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background-color: #2c2c2e; color: white; font-size: 16px; box-sizing: border-box; }
         
+        /* Workout Logging Layout */
         .set-grid { display: grid; grid-template-columns: 24px 1fr 50px 50px 24px 32px 24px; gap: 6px; align-items: center; margin-bottom: 10px; text-align: center; }
         .set-grid-header { font-size: 10px; color: var(--gray); font-weight: bold; text-transform: uppercase; }
         
         .set-index { font-weight: bold; color: var(--gray); background: #333; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
-        
-        /* Adjusted history block to allow multiple lines for the date */
         .set-history { font-size: 13px; color: var(--gray); line-height: 1.2; text-align: left; padding-left: 4px; }
         .set-history-date { font-size: 9px; color: #666; font-weight: normal; }
         
@@ -48,17 +47,29 @@
         
         .icon-btn { background: transparent; border: none; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0 auto; }
         
+        /* Clean Master Exercises Tab Styles */
+        .alphabet-header { font-size: 14px; color: var(--blue); font-weight: bold; padding: 15px 5px 5px 5px; border-bottom: 1px solid #2c2c2e; margin-bottom: 10px; text-transform: uppercase; }
+        .dict-item { padding: 14px 8px; border-bottom: 1px solid #1c1c1e; display: flex; flex-direction: column; gap: 10px; }
+        .dict-item:last-child { border-bottom: none; }
+        .dict-item-name { font-size: 17px; font-weight: 600; color: #fff; }
+        .dict-actions { display: flex; gap: 8px; justify-content: flex-start; }
+        
+        /* Drag and Drop Reordering Styles */
+        .drag-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .drag-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 14px 16px; border-radius: 12px; touch-action: none; user-select: none; }
+        .drag-item.dragging { opacity: 0.5; background: #3a3a3c; border: 1px dashed var(--blue); }
+        .drag-handle { font-size: 20px; color: var(--gray); padding: 0 10px; cursor: grab; }
+        
         /* Modals */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);}
-        .modal-content { width: 100%; max-width: 400px; margin-bottom: 20%;}
+        .modal-content { width: 100%; max-width: 400px; margin-bottom: 20%; max-height: 85vh; overflow-y: auto; }
         
-        /* Nav */
+        /* Navigation */
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
         .nav-btn { color: var(--gray); background: none; border: none; font-size: 14px; font-weight: bold; }
         .nav-btn.active { color: var(--blue); }
         .hidden { display: none !important; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; }
-        .dict-item { padding: 12px 0; border-bottom: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -80,8 +91,8 @@
     </div>
 
     <div id="exercises-screen" class="hidden">
-        <h1>Master Exercises</h1>
-        <div class="card" id="dictionary-list"></div>
+        <h1>Exercises</h1>
+        <div class="card" style="padding: 8px 16px;" id="dictionary-list"></div>
     </div>
 
     <div id="history-screen" class="hidden">
@@ -119,6 +130,19 @@
         </div>
     </div>
 
+    <div id="manage-template-modal" class="modal hidden">
+        <div class="modal-content card" style="max-width:450px;">
+            <h2 id="manage-template-title">Edit Template</h2>
+            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Drag ☰ to reorder exercises, or tap ✕ to remove.</p>
+            
+            <div id="drag-container" class="drag-list"></div>
+            
+            <div class="flex-row" style="margin-top:20px;">
+                <button class="primary" style="margin-bottom:0;" onclick="saveTemplateOrder()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <div class="nav-bar" id="main-nav">
         <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">Home</button>
         <button class="nav-btn" id="nav-exercises" onclick="switchTab('exercises')">Exercises</button>
@@ -139,7 +163,6 @@
             dictionary: []
         };
 
-        // Auto-build dictionary if it's empty or missing
         if (!db.dictionary || db.dictionary.length === 0) {
             let uniqueEx = new Set();
             if(db.templates) db.templates.forEach(t => t.exercises.forEach(e => uniqueEx.add(e)));
@@ -148,12 +171,10 @@
         }
 
         function updateStorage() {
-            // Keep dictionary clean and sorted
             db.dictionary = Array.from(new Set(db.dictionary)).sort();
             localStorage.setItem('gymDB', JSON.stringify(db));
         }
 
-        // --- DATE FORMATTER ---
         function formatDisplayDate(dateStr, timestamp) {
             let d = timestamp ? new Date(timestamp) : new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr; 
@@ -183,7 +204,8 @@
            ========================================= */
         
         let currentWorkout = { templateId: null, exercises: [] };
-        let mergeSourceContext = ""; // Tracks which exercise is being merged
+        let mergeSourceContext = ""; 
+        let manageTemplateId = null; // Tracks which template is being reordered
 
         // --- TEMPLATES ---
         function renderTemplates() {
@@ -194,7 +216,7 @@
                     <div class="flex-between card" style="padding: 10px 16px;">
                         <button class="primary" style="margin:0; width:70%;" onclick="startWorkout(${temp.id})">${temp.name}</button>
                         <div style="display:flex;">
-                            <button class="small-edit" onclick="renameTemplate(${temp.id})">✎</button>
+                            <button class="small-edit" onclick="openManageTemplate(${temp.id})">✎</button>
                             <button class="small-edit" style="background:rgba(255, 69, 58, 0.2); color:var(--red);" onclick="deleteTemplate(${temp.id})">X</button>
                         </div>
                     </div>
@@ -213,7 +235,12 @@
         function renameTemplate(id) {
             const temp = db.templates.find(t => t.id === id);
             const newName = prompt("Rename workout:", temp.name);
-            if(newName) { temp.name = newName; updateStorage(); renderTemplates(); }
+            if(newName) { 
+                temp.name = newName; 
+                updateStorage(); 
+                renderTemplates(); 
+                closeModals();
+            }
         }
 
         function deleteTemplate(id) {
@@ -221,6 +248,7 @@
                 db.templates = db.templates.filter(t => t.id !== id);
                 updateStorage();
                 renderTemplates();
+                closeModals();
             }
         }
 
@@ -247,7 +275,6 @@
             renderActiveWorkout();
         }
 
-        // Modal for Adding Exercises
         function openAddExModal() {
             const datalist = document.getElementById('master-ex-list');
             datalist.innerHTML = '';
@@ -261,21 +288,19 @@
         function closeModals() {
             document.getElementById('add-ex-modal').classList.add('hidden');
             document.getElementById('merge-modal').classList.add('hidden');
+            document.getElementById('manage-template-modal').classList.add('hidden');
         }
 
         function confirmAddExercise() {
             const exName = document.getElementById('new-ex-input').value.trim();
             if(!exName) return;
             
-            // Add to dictionary if new
             if (!db.dictionary.includes(exName)) db.dictionary.push(exName);
 
-            // Add to template
             const template = db.templates.find(t => t.id === currentWorkout.templateId);
             template.exercises.push(exName);
             updateStorage();
             
-            // Add to live screen
             currentWorkout.exercises.push({ 
                 name: exName, 
                 sets: [ 
@@ -286,7 +311,7 @@
             
             closeModals();
             renderActiveWorkout();
-            renderExercisesTab(); // Keep background tabs synced
+            renderExercisesTab(); 
         }
 
         function renderActiveWorkout() {
@@ -308,7 +333,6 @@
                     if (set.comment) commentColor = "var(--blue)";
                     else if (historyData.comment) commentColor = "var(--orange)";
                     
-                    // Formatting history to include date below weight
                     let historyHTML = `<strong>${historyData.text}</strong>`;
                     if(historyData.dateStr) historyHTML += `<br><span class="set-history-date">${historyData.dateStr}</span>`;
 
@@ -397,7 +421,7 @@
                     comment: setObj.comment || "",
                     setNumber: setIndex + 1,
                     date: new Date().toLocaleDateString(),
-                    timestamp: newId // Added timestamp for date formatting
+                    timestamp: newId 
                 });
                 
                 if (!db.dictionary.includes(currentWorkout.exercises[exIndex].name)) {
@@ -423,21 +447,35 @@
             list.innerHTML = '';
             
             if (db.dictionary.length === 0) {
-                list.innerHTML = "<p style='color:var(--gray);'>No exercises saved yet.</p>";
+                list.innerHTML = "<p style='color:var(--gray); text-align:center;'>No exercises saved yet.</p>";
                 return;
             }
 
+            // Group Exercises Alphabetically
+            const groups = {};
             db.dictionary.forEach(ex => {
-                list.innerHTML += `
-                    <div class="dict-item flex-between">
-                        <strong style="font-size:16px;">${ex}</strong>
-                        <div>
-                            <button class="small-edit" onclick="renameDictExercise('${ex.replace(/'/g, "\\'")}')">✎ Rename</button>
-                            <button class="small-edit" style="background:var(--orange); color:black;" onclick="openMergeModal('${ex.replace(/'/g, "\\'")}')">Combine</button>
-                            <button class="small-edit" style="background:rgba(255, 69, 58, 0.2); color:var(--red);" onclick="deleteDictExercise('${ex.replace(/'/g, "\\'")}')">✕</button>
+                const letter = ex.charAt(0).toUpperCase();
+                if (!groups[letter]) groups[letter] = [];
+                groups[letter].push(ex);
+            });
+
+            const sortedLetters = Object.keys(groups).sort();
+
+            sortedLetters.forEach(letter => {
+                list.innerHTML += `<div class="alphabet-header">${letter}</div>`;
+                
+                groups[letter].forEach(ex => {
+                    list.innerHTML += `
+                        <div class="dict-item">
+                            <span class="dict-item-name">${ex}</span>
+                            <div class="dict-actions">
+                                <button class="small-edit" onclick="renameDictExercise('${ex.replace(/'/g, "\\'")}')">✎ Rename</button>
+                                <button class="small-edit" style="color:var(--orange);" onclick="openMergeModal('${ex.replace(/'/g, "\\'")}')">⇋ Combine</button>
+                                <button class="small-edit" style="color:var(--red);" onclick="deleteDictExercise('${ex.replace(/'/g, "\\'")}')">✕ Delete</button>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                });
             });
         }
 
@@ -445,14 +483,11 @@
             const newName = prompt(`Rename '${oldName}' to:`, oldName);
             if (!newName || newName === oldName) return;
 
-            // Update Dictionary
             db.dictionary = db.dictionary.filter(e => e !== oldName);
             if (!db.dictionary.includes(newName)) db.dictionary.push(newName);
 
-            // Update Sets
             db.sets.forEach(s => { if (s.name === oldName) s.name = newName; });
 
-            // Update Templates
             db.templates.forEach(t => {
                 const idx = t.exercises.indexOf(oldName);
                 if (idx !== -1) t.exercises[idx] = newName;
@@ -464,7 +499,7 @@
         }
 
         function deleteDictExercise(exName) {
-            if(confirm(`Remove '${exName}' from master list?\n\n(This will not delete past history, but removes it from auto-complete).`)) {
+            if(confirm(`Remove '${exName}' from master list?\n\n(This removes it from auto-complete, but won't delete past history).`)) {
                 db.dictionary = db.dictionary.filter(e => e !== exName);
                 updateStorage();
                 renderExercisesTab();
@@ -491,14 +526,11 @@
             const targetName = document.getElementById('merge-target-select').value;
             if(!targetName) return alert("Please select a target exercise.");
             
-            // 1. Update Sets
             db.sets.forEach(s => { if (s.name === mergeSourceContext) s.name = targetName; });
 
-            // 2. Update Templates
             db.templates.forEach(t => {
                 const idx = t.exercises.indexOf(mergeSourceContext);
                 if (idx !== -1) {
-                    // Check if target is already in this template to avoid duplicates
                     if (t.exercises.includes(targetName)) {
                         t.exercises.splice(idx, 1); 
                     } else {
@@ -507,7 +539,6 @@
                 }
             });
 
-            // 3. Remove old name from dictionary
             db.dictionary = db.dictionary.filter(e => e !== mergeSourceContext);
             
             updateStorage();
@@ -515,6 +546,103 @@
             renderExercisesTab();
             refreshHistoryUI();
             alert(`Successfully merged into ${targetName}`);
+        }
+
+        // --- MANAGE & REORDER TEMPLATE EXERCISES (TOUCH DRAG) ---
+        function openManageTemplate(templateId) {
+            manageTemplateId = templateId;
+            const template = db.templates.find(t => t.id === templateId);
+            
+            document.getElementById('manage-template-title').innerText = `Edit: ${template.name}`;
+            
+            const container = document.getElementById('drag-container');
+            container.innerHTML = '';
+
+            template.exercises.forEach((exName, index) => {
+                container.innerHTML += `
+                    <div class="drag-item" data-index="${index}">
+                        <div style="display:flex; align-items:center;">
+                            <span class="drag-handle">☰</span>
+                            <span style="font-weight:600;">${exName}</span>
+                        </div>
+                        <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 5px;" onclick="removeExFromTemplate(${index})">✕</button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('manage-template-modal').classList.remove('hidden');
+            initTouchDrag();
+        }
+
+        function removeExFromTemplate(index) {
+            const template = db.templates.find(t => t.id === manageTemplateId);
+            template.exercises.splice(index, 1);
+            openManageTemplate(manageTemplateId); // Re-render lists
+        }
+
+        function saveTemplateOrder() {
+            const container = document.getElementById('drag-container');
+            const items = container.querySelectorAll('.drag-item');
+            const template = db.templates.find(t => t.id === manageTemplateId);
+            
+            const newOrder = [];
+            items.forEach(item => {
+                const exName = item.querySelector('span:not(.drag-handle)').innerText;
+                newOrder.push(exName);
+            });
+
+            template.exercises = newOrder;
+            updateStorage();
+            closeModals();
+            renderTemplates();
+        }
+
+        // Vanilla Touch Drag & Drop logic for smooth mobile performance
+        function initTouchDrag() {
+            const container = document.getElementById('drag-container');
+            let dragEl = null;
+
+            container.addEventListener('touchstart', (e) => {
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+
+                const item = e.target.closest('.drag-item');
+                dragEl = item;
+                item.classList.add('dragging');
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!dragEl) return;
+                
+                const touch = e.touches[0];
+                const afterElement = getDragAfterElement(container, touch.clientY);
+                
+                if (afterElement == null) {
+                    container.appendChild(dragEl);
+                } else {
+                    container.insertBefore(dragEl, afterElement);
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', () => {
+                if (!dragEl) return;
+                dragEl.classList.remove('dragging');
+                dragEl = null;
+            }, { passive: true });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.drag-item:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
         // --- HISTORY ---
