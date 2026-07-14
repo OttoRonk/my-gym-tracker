@@ -56,13 +56,22 @@
         
         /* Drag and Drop Reordering Styles */
         .drag-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .drag-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 14px 16px; border-radius: 12px; touch-action: none; user-select: none; }
-        .drag-item.dragging { opacity: 0.5; background: #3a3a3c; border: 1px dashed var(--blue); }
-        .drag-handle { font-size: 20px; color: var(--gray); padding: 0 10px; cursor: grab; }
+        .drag-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 14px 16px; border-radius: 12px; touch-action: none; user-select: none; position: relative; }
+        .drag-item.dragging { opacity: 0.5; background: #3a3a3c; border: 1px dashed var(--blue); transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.4); z-index: 10; }
+        .drag-handle { font-size: 20px; color: var(--blue); padding: 0 12px; cursor: grab; height: 30px; display: flex; align-items: center; }
         
-        /* Modals */
+        /* Modal and Select layouts */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);}
-        .modal-content { width: 100%; max-width: 400px; margin-bottom: 20%; max-height: 85vh; overflow-y: auto; }
+        .modal-content { width: 100%; max-width: 400px; margin-bottom: 10%; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
+        
+        .toggle-btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .toggle-tab { flex: 1; padding: 10px; background: #2c2c2e; border: none; border-radius: 8px; color: var(--gray); font-weight: bold; font-size: 14px; }
+        .toggle-tab.active { background: var(--blue); color: white; }
+        
+        .scrollable-list { max-height: 200px; overflow-y: auto; background: #121212; border-radius: 8px; padding: 5px; margin-bottom: 15px; }
+        .scrollable-item { padding: 12px 10px; border-bottom: 1px solid #1c1c1e; color: white; font-weight: 500; font-size: 15px; }
+        .scrollable-item:active { background: #2c2c2e; }
+        .scrollable-item:last-child { border-bottom: none; }
         
         /* Navigation */
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
@@ -103,13 +112,27 @@
     <div id="add-ex-modal" class="modal hidden">
         <div class="modal-content card">
             <h2>Add Exercise</h2>
-            <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">EXERCISE NAME</label>
-            <input type="text" id="new-ex-input" list="master-ex-list" placeholder="Type or select from list...">
-            <datalist id="master-ex-list"></datalist>
+            
+            <div class="toggle-btn-group">
+                <button class="toggle-tab active" id="tab-btn-type" onclick="switchAddExMode('type')">Type Name</button>
+                <button class="toggle-tab" id="tab-btn-list" onclick="switchAddExMode('list')">Show List</button>
+            </div>
+
+            <div id="mode-type-section">
+                <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">EXERCISE NAME</label>
+                <input type="text" id="new-ex-input" list="master-ex-list" placeholder="Type exercise name...">
+                <datalist id="master-ex-list"></datalist>
+            </div>
+
+            <div id="mode-list-section" class="hidden">
+                <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">SELECT FROM MASTER LIST</label>
+                <div class="scrollable-list" id="modal-select-list">
+                    </div>
+            </div>
             
             <div class="flex-row" style="margin-top:15px;">
                 <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
-                <button class="primary" style="margin-bottom:0;" onclick="confirmAddExercise()">Add</button>
+                <button class="primary" style="margin-bottom:0;" onclick="confirmAddExercise()">Add to Workout</button>
             </div>
         </div>
     </div>
@@ -133,7 +156,7 @@
     <div id="manage-template-modal" class="modal hidden">
         <div class="modal-content card" style="max-width:450px;">
             <h2 id="manage-template-title">Edit Template</h2>
-            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Drag ☰ to reorder exercises, or tap ✕ to remove.</p>
+            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Press & drag ☰ to reorder, or tap ✕ to remove.</p>
             
             <div id="drag-container" class="drag-list"></div>
             
@@ -205,7 +228,8 @@
         
         let currentWorkout = { templateId: null, exercises: [] };
         let mergeSourceContext = ""; 
-        let manageTemplateId = null; // Tracks which template is being reordered
+        let manageTemplateId = null; 
+        let currentAddExMode = 'type'; // 'type' or 'list'
 
         // --- TEMPLATES ---
         function renderTemplates() {
@@ -275,14 +299,53 @@
             renderActiveWorkout();
         }
 
+        // Add Exercise Modal Customization
         function openAddExModal() {
+            // Set up Autocomplete suggestions (Type Mode)
             const datalist = document.getElementById('master-ex-list');
             datalist.innerHTML = '';
             db.dictionary.forEach(ex => {
                 datalist.innerHTML += `<option value="${ex}">`;
             });
             document.getElementById('new-ex-input').value = "";
+
+            // Set up Clickable List (List Mode)
+            const listContainer = document.getElementById('modal-select-list');
+            listContainer.innerHTML = '';
+            if (db.dictionary.length === 0) {
+                listContainer.innerHTML = '<div style="padding:15px; text-align:center; color:var(--gray);">No master exercises yet.</div>';
+            } else {
+                db.dictionary.forEach(ex => {
+                    listContainer.innerHTML += `
+                        <div class="scrollable-item" onclick="selectExerciseFromModalList('${ex.replace(/'/g, "\\'")}')">
+                            ${ex}
+                        </div>
+                    `;
+                });
+            }
+
+            switchAddExMode('type'); // Default to Type Mode on open
             document.getElementById('add-ex-modal').classList.remove('hidden');
+        }
+
+        function switchAddExMode(mode) {
+            currentAddExMode = mode;
+            if (mode === 'type') {
+                document.getElementById('tab-btn-type').classList.add('active');
+                document.getElementById('tab-btn-list').classList.remove('active');
+                document.getElementById('mode-type-section').classList.remove('hidden');
+                document.getElementById('mode-list-section').classList.add('hidden');
+            } else {
+                document.getElementById('tab-btn-type').classList.remove('active');
+                document.getElementById('tab-btn-list').classList.add('active');
+                document.getElementById('mode-type-section').classList.add('hidden');
+                document.getElementById('mode-list-section').classList.remove('hidden');
+            }
+        }
+
+        function selectExerciseFromModalList(name) {
+            document.getElementById('new-ex-input').value = name;
+            confirmAddExercise();
         }
 
         function closeModals() {
@@ -293,7 +356,7 @@
 
         function confirmAddExercise() {
             const exName = document.getElementById('new-ex-input').value.trim();
-            if(!exName) return;
+            if(!exName) return alert("Please select or type an exercise name.");
             
             if (!db.dictionary.includes(exName)) db.dictionary.push(exName);
 
@@ -451,7 +514,6 @@
                 return;
             }
 
-            // Group Exercises Alphabetically
             const groups = {};
             db.dictionary.forEach(ex => {
                 const letter = ex.charAt(0).toUpperCase();
@@ -548,7 +610,7 @@
             alert(`Successfully merged into ${targetName}`);
         }
 
-        // --- MANAGE & REORDER TEMPLATE EXERCISES (TOUCH DRAG) ---
+        // --- MANAGE & REORDER TEMPLATE EXERCISES (ROBUST TOUCH EVENTS) ---
         function openManageTemplate(templateId) {
             manageTemplateId = templateId;
             const template = db.templates.find(t => t.id === templateId);
@@ -561,11 +623,11 @@
             template.exercises.forEach((exName, index) => {
                 container.innerHTML += `
                     <div class="drag-item" data-index="${index}">
-                        <div style="display:flex; align-items:center;">
+                        <div style="display:flex; align-items:center; width: 80%;">
                             <span class="drag-handle">☰</span>
-                            <span style="font-weight:600;">${exName}</span>
+                            <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${exName}</span>
                         </div>
-                        <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 5px;" onclick="removeExFromTemplate(${index})">✕</button>
+                        <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 10px;" onclick="removeExFromTemplate(${index})">✕</button>
                     </div>
                 `;
             });
@@ -577,13 +639,12 @@
         function removeExFromTemplate(index) {
             const template = db.templates.find(t => t.id === manageTemplateId);
             template.exercises.splice(index, 1);
-            openManageTemplate(manageTemplateId); // Re-render lists
+            openManageTemplate(manageTemplateId); 
         }
 
         function saveTemplateOrder() {
             const container = document.getElementById('drag-container');
             const items = container.querySelectorAll('.drag-item');
-            const template = db.templates.find(t => t.id === manageTemplateId);
             
             const newOrder = [];
             items.forEach(item => {
@@ -591,13 +652,14 @@
                 newOrder.push(exName);
             });
 
+            const template = db.templates.find(t => t.id === manageTemplateId);
             template.exercises = newOrder;
             updateStorage();
             closeModals();
             renderTemplates();
         }
 
-        // Vanilla Touch Drag & Drop logic for smooth mobile performance
+        // Robust mobile-optimized drag logic
         function initTouchDrag() {
             const container = document.getElementById('drag-container');
             let dragEl = null;
@@ -608,21 +670,27 @@
 
                 const item = e.target.closest('.drag-item');
                 dragEl = item;
-                item.classList.add('dragging');
+                
+                // Visual feedback for dragging state
+                dragEl.classList.add('dragging');
             }, { passive: true });
 
             container.addEventListener('touchmove', (e) => {
                 if (!dragEl) return;
                 
                 const touch = e.touches[0];
-                const afterElement = getDragAfterElement(container, touch.clientY);
+                const currentY = touch.clientY;
                 
-                if (afterElement == null) {
+                // Prevent screen scrolling during drag movement
+                e.preventDefault(); 
+                
+                const targetEl = getDragAfterElement(container, currentY);
+                if (targetEl == null) {
                     container.appendChild(dragEl);
                 } else {
-                    container.insertBefore(dragEl, afterElement);
+                    container.insertBefore(dragEl, targetEl);
                 }
-            }, { passive: true });
+            }, { passive: false }); // Needs false to allow e.preventDefault()
 
             container.addEventListener('touchend', () => {
                 if (!dragEl) return;
@@ -636,7 +704,7 @@
 
             return draggableElements.reduce((closest, child) => {
                 const box = child.getBoundingClientRect();
-                const offset = y - box.top - box.height / 2;
+                const offset = y - (box.top + box.height / 2);
                 if (offset < 0 && offset > closest.offset) {
                     return { offset: offset, element: child };
                 } else {
