@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Gym Tracker</title>
+    <style>
+        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --red: #ff453a; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 80px; }
+        h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
+        .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
+        
+        label { font-size: 12px; color: #8e8e93; font-weight: bold; display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background-color: #2c2c2e; color: white; font-size: 16px; box-sizing: border-box; }
+        
+        .flex-row { display: flex; gap: 10px; }
+        button.primary { width: 100%; padding: 14px; background-color: var(--blue); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
+        button.danger { padding: 8px 12px; background-color: rgba(255, 69, 58, 0.2); color: var(--red); border: none; border-radius: 6px; font-size: 14px; font-weight: bold; }
+        
+        /* Navigation Bar */
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
+        .nav-btn { color: #8e8e93; background: none; border: none; font-size: 16px; font-weight: bold; }
+        .nav-btn.active { color: var(--blue); }
+
+        /* Hide sections */
+        .hidden { display: none; }
+        
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; }
+    </style>
+</head>
+<body>
+
+    <div id="workout-screen">
+        <h1>Log Exercise</h1>
+        <div class="card">
+            <label>EXERCISE NAME</label>
+            <input type="text" id="ex-name" list="exercise-dict" placeholder="Start typing...">
+            
+            <datalist id="exercise-dict"></datalist>
+
+            <div class="flex-row">
+                <div style="flex: 1;">
+                    <label>WEIGHT</label>
+                    <input type="number" id="ex-weight" placeholder="0">
+                </div>
+                <div style="flex: 1;">
+                    <label>REPS</label>
+                    <input type="number" id="ex-reps" placeholder="0">
+                </div>
+            </div>
+            <button class="primary" onclick="saveSet()">Save Set</button>
+        </div>
+    </div>
+
+    <div id="history-screen" class="hidden">
+        <h1>Workout History</h1>
+        <div class="card" id="history-list">
+            </div>
+    </div>
+
+    <div class="nav-bar">
+        <button class="nav-btn active" id="nav-workout" onclick="switchTab('workout')">Workout</button>
+        <button class="nav-btn" id="nav-history" onclick="switchTab('history')">History</button>
+    </div>
+
+    <script>
+        // --- DATABASE ENGINE ---
+        // Load data from iPhone memory, or create empty arrays if it's the first time
+        let db = JSON.parse(localStorage.getItem('gymDB')) || { sets: [], dictionary: [] };
+
+        function updateStorage() {
+            localStorage.setItem('gymDB', JSON.stringify(db));
+            refreshDictionaryUI();
+            refreshHistoryUI();
+        }
+
+        // --- ACTIONS ---
+        function saveSet() {
+            const name = document.getElementById('ex-name').value.trim();
+            const weight = document.getElementById('ex-weight').value;
+            const reps = document.getElementById('ex-reps').value;
+
+            if (!name || !reps) return alert("Exercise name and reps are required!");
+
+            // 1. Update the Auto-complete Dictionary if it's a new exercise
+            if (!db.dictionary.includes(name)) {
+                db.dictionary.push(name);
+                db.dictionary.sort(); // Keep it alphabetical
+            }
+
+            // 2. Create the data point with a unique ID (timestamp)
+            const newSet = {
+                id: Date.now(), 
+                name: name,
+                weight: weight || 0,
+                reps: reps,
+                date: new Date().toLocaleDateString()
+            };
+
+            // 3. Save to database
+            db.sets.unshift(newSet); // Add to beginning of list
+            updateStorage();
+
+            // Clear inputs for the next set
+            document.getElementById('ex-weight').value = '';
+            document.getElementById('ex-reps').value = '';
+            alert("Saved to Database!");
+        }
+
+        function deleteSet(idToDelete) {
+            if(confirm("Delete this set?")) {
+                // Filter out the one set that matches the ID
+                db.sets = db.sets.filter(set => set.id !== idToDelete);
+                updateStorage();
+            }
+        }
+
+        // --- UI UPDATES ---
+        function refreshDictionaryUI() {
+            const datalist = document.getElementById('exercise-dict');
+            datalist.innerHTML = '';
+            db.dictionary.forEach(ex => {
+                datalist.innerHTML += `<option value="${ex}">`;
+            });
+        }
+
+        function refreshHistoryUI() {
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = '';
+            
+            if (db.sets.length === 0) {
+                historyList.innerHTML = "<p style='color:#8e8e93;'>No sets logged yet.</p>";
+                return;
+            }
+
+            db.sets.forEach(set => {
+                historyList.innerHTML += `
+                    <div class="history-item">
+                        <div>
+                            <strong style="color:var(--blue);">${set.name}</strong><br>
+                            <span style="font-size:14px;">${set.weight}kg x ${set.reps} reps</span>
+                            <div style="font-size:12px; color:#8e8e93;">${set.date}</div>
+                        </div>
+                        <button class="danger" onclick="deleteSet(${set.id})">Delete</button>
+                    </div>
+                `;
+            });
+        }
+
+        function switchTab(tab) {
+            document.getElementById('workout-screen').classList.add('hidden');
+            document.getElementById('history-screen').classList.add('hidden');
+            document.getElementById('nav-workout').classList.remove('active');
+            document.getElementById('nav-history').classList.remove('active');
+
+            document.getElementById(`${tab}-screen`).classList.remove('hidden');
+            document.getElementById(`nav-${tab}`).classList.add('active');
+        }
+
+        // Run these once when the app opens
+        refreshDictionaryUI();
+        refreshHistoryUI();
+    </script>
+</body>
+</html>
