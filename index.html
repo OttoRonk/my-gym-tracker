@@ -1,5 +1,3 @@
-pillu
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,7 +15,7 @@ pillu
         
         body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 90px; }
         h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
-        h2 { font-size: 20px; margin: 0 0 15px 0; }
+        h2 { font-size: 20px; margin: 0; }
         
         .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
         
@@ -54,11 +52,6 @@ pillu
         .dict-item { padding: 14px 8px; border-bottom: 1px solid #1c1c1e; display: flex; flex-direction: column; gap: 10px; }
         .dict-item-name { font-size: 17px; font-weight: 600; color: #fff; }
         .dict-actions { display: flex; gap: 8px; justify-content: flex-start; }
-        
-        /* Button Reordering Styles */
-        .template-ex-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .template-ex-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 10px 14px; border-radius: 12px; }
-        .ex-name-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; }
         
         /* Modals and Select layouts */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);}
@@ -157,20 +150,6 @@ pillu
         </div>
     </div>
 
-    <div id="manage-template-modal" class="modal hidden">
-        <div class="modal-content card" style="max-width:450px;">
-            <h2 id="manage-template-title">Edit Template</h2>
-            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Tap the <b>▲</b> and <b>▼</b> arrows to reorder exercises.</p>
-            
-            <div id="template-ex-container" class="template-ex-list"></div>
-            
-            <div class="flex-row" style="margin-top:20px;">
-                <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
-                <button class="primary" style="margin-bottom:0;" onclick="saveTemplateOrder()">Save Changes</button>
-            </div>
-        </div>
-    </div>
-
     <div class="nav-bar" id="main-nav">
         <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">Home</button>
         <button class="nav-btn" id="nav-exercises" onclick="switchTab('exercises')">Exercises</button>
@@ -203,7 +182,6 @@ pillu
             localStorage.setItem('gymDB', JSON.stringify(db));
         }
 
-        // FORMAT FIX: Hardcoded to English ('en-US') to override device location
         function formatDisplayDate(dateStr, timestamp) {
             let d = timestamp ? new Date(timestamp) : new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr; 
@@ -234,10 +212,9 @@ pillu
         
         let currentWorkout = { templateId: null, exercises: [] };
         let mergeSourceContext = ""; 
-        let manageTemplateId = null; 
         let currentAddExMode = 'type'; 
 
-        // --- TEMPLATES (REDESIGNED FOR VISIBILITY) ---
+        // --- TEMPLATES ---
         function renderTemplates() {
             const list = document.getElementById('template-list');
             list.innerHTML = '';
@@ -255,10 +232,7 @@ pillu
                         <p style="color:var(--gray); font-size:14px; margin-top:0; margin-bottom:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${exList}
                         </p>
-                        <div class="flex-row">
-                            <button class="primary" style="margin-bottom:0; flex:2;" onclick="startWorkout(${temp.id})">Start</button>
-                            <button class="secondary" style="margin-bottom:0; flex:1;" onclick="openManageTemplate(${temp.id})">Reorder</button>
-                        </div>
+                        <button class="primary" style="margin-bottom:0;" onclick="startWorkout(${temp.id})">Start Workout</button>
                     </div>
                 `;
             });
@@ -279,7 +253,6 @@ pillu
                 temp.name = newName; 
                 updateStorage(); 
                 renderTemplates(); 
-                closeModals();
             }
         }
 
@@ -288,7 +261,6 @@ pillu
                 db.templates = db.templates.filter(t => t.id !== id);
                 updateStorage();
                 renderTemplates();
-                closeModals();
             }
         }
 
@@ -372,7 +344,6 @@ pillu
         function closeModals() {
             document.getElementById('add-ex-modal').classList.add('hidden');
             document.getElementById('merge-modal').classList.add('hidden');
-            document.getElementById('manage-template-modal').classList.add('hidden');
         }
 
         function confirmAddExercise() {
@@ -436,7 +407,15 @@ pillu
 
                 blocksDiv.innerHTML += `
                     <div class="card">
-                        <h2>${ex.name}</h2>
+                        <div class="flex-between" style="margin-bottom: 15px;">
+                            <h2 style="margin:0; max-width:50%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ex.name}</h2>
+                            <div style="display:flex; gap: 4px; align-items:center;">
+                                <button class="small-edit" style="padding: 6px 12px; background: #333; color: white;" onclick="moveActiveExercise(${exIndex}, -1)">▲</button>
+                                <button class="small-edit" style="padding: 6px 12px; background: #333; color: white;" onclick="moveActiveExercise(${exIndex}, 1)">▼</button>
+                                <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 5px 10px;" onclick="removeActiveExercise(${exIndex})">✕</button>
+                            </div>
+                        </div>
+
                         <div class="set-grid set-grid-header">
                             <div>#</div><div style="text-align:left; padding-left:4px;">PREV</div><div>KG</div><div>REP</div><div></div><div></div><div></div>
                         </div>
@@ -445,6 +424,44 @@ pillu
                     </div>
                 `;
             });
+        }
+
+        // NEW: Handles shifting exercises up and down in real-time
+        function moveActiveExercise(exIndex, direction) {
+            const targetIndex = exIndex + direction;
+            
+            // Boundary checks (prevent moving above top or below bottom)
+            if (targetIndex < 0 || targetIndex >= currentWorkout.exercises.length) return;
+            
+            // 1. Swap in the active workout view
+            const tempActive = currentWorkout.exercises[exIndex];
+            currentWorkout.exercises[exIndex] = currentWorkout.exercises[targetIndex];
+            currentWorkout.exercises[targetIndex] = tempActive;
+            
+            // 2. Swap in the permanent database template to save it automatically
+            const template = db.templates.find(t => t.id === currentWorkout.templateId);
+            if (template) {
+                const tempEx = template.exercises[exIndex];
+                template.exercises[exIndex] = template.exercises[targetIndex];
+                template.exercises[targetIndex] = tempEx;
+                updateStorage();
+            }
+            
+            renderActiveWorkout(); 
+        }
+
+        // NEW: Remove exercise completely from active workout and template
+        function removeActiveExercise(exIndex) {
+            if(confirm("Remove this exercise from your workout?")) {
+                currentWorkout.exercises.splice(exIndex, 1);
+                
+                const template = db.templates.find(t => t.id === currentWorkout.templateId);
+                if (template) {
+                    template.exercises.splice(exIndex, 1);
+                    updateStorage();
+                }
+                renderActiveWorkout();
+            }
         }
 
         function updateState(exIndex, setIndex, field, value) {
@@ -504,7 +521,6 @@ pillu
                     reps: r,
                     comment: setObj.comment || "",
                     setNumber: setIndex + 1,
-                    // FORMAT FIX: English date
                     date: new Date().toLocaleDateString('en-US'),
                     timestamp: newId 
                 });
@@ -524,6 +540,7 @@ pillu
             document.getElementById('main-nav').classList.remove('hidden');
             refreshHistoryUI(); 
             renderExercisesTab();
+            renderTemplates(); // Refreshes the template preview lists on the home screen
         }
 
         // --- EXERCISE DICTIONARY MANAGEMENT ---
@@ -630,69 +647,6 @@ pillu
             renderExercisesTab();
             refreshHistoryUI();
             alert(`Successfully merged into ${targetName}`);
-        }
-
-        // --- MANAGE & REORDER TEMPLATE EXERCISES (BUTTONS ONLY) ---
-        function openManageTemplate(templateId) {
-            manageTemplateId = templateId;
-            const template = db.templates.find(t => t.id === templateId);
-            
-            document.getElementById('manage-template-title').innerText = `Edit: ${template.name}`;
-            
-            const container = document.getElementById('template-ex-container');
-            container.innerHTML = '';
-
-            template.exercises.forEach((exName, index) => {
-                container.innerHTML += `
-                    <div class="template-ex-item" data-index="${index}">
-                        <span class="ex-name-label">${exName}</span>
-                        <div style="display:flex; gap: 4px; align-items:center;">
-                            <button class="small-edit" style="padding: 6px 12px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, -1)">▲</button>
-                            <button class="small-edit" style="padding: 6px 12px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, 1)">▼</button>
-                            <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 10px;" onclick="removeExFromTemplate(${index})">✕</button>
-                        </div>
-                    </div>
-                `;
-            });
-
-            document.getElementById('manage-template-modal').classList.remove('hidden');
-        }
-
-        function moveTemplateExercise(index, direction) {
-            const template = db.templates.find(t => t.id === manageTemplateId);
-            const targetIndex = index + direction;
-            
-            if (targetIndex < 0 || targetIndex >= template.exercises.length) return;
-            
-            const temp = template.exercises[index];
-            template.exercises[index] = template.exercises[targetIndex];
-            template.exercises[targetIndex] = temp;
-            
-            updateStorage();
-            openManageTemplate(manageTemplateId); 
-        }
-
-        function removeExFromTemplate(index) {
-            const template = db.templates.find(t => t.id === manageTemplateId);
-            template.exercises.splice(index, 1);
-            openManageTemplate(manageTemplateId); 
-        }
-
-        function saveTemplateOrder() {
-            const container = document.getElementById('template-ex-container');
-            const items = container.querySelectorAll('.template-ex-item');
-            
-            const newOrder = [];
-            items.forEach(item => {
-                const exName = item.querySelector('.ex-name-label').innerText;
-                newOrder.push(exName);
-            });
-
-            const template = db.templates.find(t => t.id === manageTemplateId);
-            template.exercises = newOrder;
-            updateStorage();
-            closeModals();
-            renderTemplates();
         }
 
         // --- HISTORY ---
