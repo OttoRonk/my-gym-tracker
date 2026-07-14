@@ -9,29 +9,41 @@
     
     <style>
         /* =========================================
-           MODULE 1: STYLES (CSS)
-           Change colors, sizes, and layout here.
+           MODULE 1: STYLES
            ========================================= */
-        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --gray: #8e8e93; --red: #ff453a; }
+        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --gray: #8e8e93; --red: #ff453a; --green: #32d74b; }
         
         body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 90px; }
         h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
-        h2 { font-size: 20px; margin: 0 0 5px 0; }
+        h2 { font-size: 20px; margin: 0 0 15px 0; }
         
         .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
-        label { font-size: 12px; color: var(--gray); font-weight: bold; display: block; margin-bottom: 5px; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; background-color: #2c2c2e; color: white; font-size: 16px; box-sizing: border-box; }
         
-        .flex-row { display: flex; gap: 10px; }
-        
+        /* Buttons */
+        button { cursor: pointer; }
         button.primary { width: 100%; padding: 14px; background-color: var(--blue); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 10px;}
-        button.secondary { width: 100%; padding: 14px; background-color: #333; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
-        button.log-btn { width: 100%; padding: 12px; background-color: rgba(10, 132, 255, 0.15); color: var(--blue); border: none; border-radius: 8px; font-size: 16px; font-weight: bold; }
+        button.secondary { width: 100%; padding: 14px; background-color: #333; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 10px;}
+        button.ghost { width: 100%; padding: 10px; background-color: transparent; color: var(--blue); border: none; font-size: 16px; font-weight: bold; }
         button.danger { padding: 8px 12px; background-color: rgba(255, 69, 58, 0.2); color: var(--red); border: none; border-radius: 6px; font-size: 14px; font-weight: bold; }
+        button.small-edit { padding: 6px 12px; background: #333; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin-left: 10px;}
         
-        .history-text { font-size: 13px; color: #32d74b; margin-bottom: 15px; font-weight: bold;}
-        .logged-sets { margin-top: 10px; font-size: 14px; color: var(--gray); }
+        /* Layouts */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         
+        /* The Set Grid System */
+        .set-grid { display: grid; grid-template-columns: 30px 1fr 60px 60px 40px; gap: 8px; align-items: center; margin-bottom: 10px; text-align: center; }
+        .set-grid-header { font-size: 11px; color: var(--gray); font-weight: bold; text-transform: uppercase; }
+        
+        .set-index { font-weight: bold; color: var(--gray); background: #333; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+        .set-history { font-size: 12px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        
+        .set-input { width: 100%; padding: 10px 4px; border-radius: 6px; border: none; background: #2c2c2e; color: white; font-size: 16px; text-align: center; }
+        .set-input:disabled { background: transparent; color: var(--green); font-weight: bold; }
+        
+        .check-btn { width: 32px; height: 32px; border-radius: 6px; border: none; font-size: 16px; font-weight: bold; background: #333; color: white; margin: 0 auto;}
+        .check-btn.checked { background: var(--green); color: black; }
+        
+        /* Navigation Bar */
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
         .nav-btn { color: var(--gray); background: none; border: none; font-size: 16px; font-weight: bold; }
         .nav-btn.active { color: var(--blue); }
@@ -42,22 +54,24 @@
 <body>
 
     <div id="home-screen">
-        <h1>Start Workout</h1>
-        <div id="template-list">
-            </div>
+        <div class="flex-between">
+            <h1>Workouts</h1>
+            <button class="ghost" style="width:auto;" onclick="createTemplate()">+ New</button>
+        </div>
+        <div id="template-list"></div>
     </div>
 
     <div id="workout-screen" class="hidden">
         <h1 id="active-workout-title">Workout</h1>
-        <div id="active-blocks">
-            </div>
-        <button class="secondary" onclick="endWorkout()">Finish Workout</button>
+        <div id="active-blocks"></div>
+        
+        <button class="ghost" onclick="addExerciseToWorkout()">+ Add Exercise</button>
+        <button class="secondary" onclick="endWorkout()" style="margin-top: 20px;">Finish Workout</button>
     </div>
 
     <div id="history-screen" class="hidden">
         <h1>All History</h1>
-        <div class="card" id="history-list">
-            </div>
+        <div class="card" id="history-list"></div>
     </div>
 
     <div class="nav-bar" id="main-nav">
@@ -67,119 +81,189 @@
 
     <script>
         /* =========================================
-           MODULE 3: DATABASE ENGINE (JavaScript)
-           Handles saving and loading from iPhone memory.
+           MODULE 3: DATABASE ENGINE
            ========================================= */
            
-        // Load data from memory, or set up defaults if it's the first time
         let db = JSON.parse(localStorage.getItem('gymDB')) || { 
             sets: [], 
             templates: [
-                { id: 1, name: "Push Day", exercises: ["Bench Press", "Overhead Press", "Tricep Extensions"] },
-                { id: 2, name: "Pull Day", exercises: ["Pull-ups", "Barbell Row", "Bicep Curls"] },
-                { id: 3, name: "Leg Day", exercises: ["Squat", "Leg Press", "Calf Raises"] }
+                { id: 1, name: "Push Day", exercises: ["Bench Press", "Overhead Press"] },
+                { id: 2, name: "Pull Day", exercises: ["Pull-ups", "Barbell Row"] }
             ] 
         };
 
-        // This function is the "Save Button" for your phone's hard drive
         function updateStorage() {
             localStorage.setItem('gymDB', JSON.stringify(db));
         }
 
-        // Fetches previous weight/reps for a specific exercise
-        function getLastLog(exerciseName) {
-            const lastSet = db.sets.find(set => set.name.toLowerCase() === exerciseName.toLowerCase());
-            if (lastSet) {
-                return `Last: ${lastSet.weight}kg x ${lastSet.reps} (${lastSet.date})`;
-            }
-            return "No previous history";
+        // Contextual History: Finds the exact set number from the most recent workout date
+        function getSetHistory(exName, setNum) {
+            const logs = db.sets.filter(s => s.name.toLowerCase() === exName.toLowerCase());
+            if (logs.length === 0) return "-";
+            
+            const lastDate = logs[0].date; // Newest logs are always at the top of the array
+            const specificSet = logs.find(s => s.date === lastDate && s.setNumber === setNum);
+            
+            return specificSet ? `${specificSet.weight}x${specificSet.reps}` : "-";
         }
 
 
         /* =========================================
-           MODULE 4: APP LOGIC (JavaScript)
-           What happens when you click buttons.
+           MODULE 4: STATE MANAGEMENT & LOGIC
            ========================================= */
+        
+        // This temporary brain holds your workout while you type so you don't lose data
+        let currentWorkout = { templateId: null, exercises: [] };
 
-        // Draws the main template buttons
+        // --- TEMPLATE MANAGEMENT ---
         function renderTemplates() {
             const list = document.getElementById('template-list');
             list.innerHTML = '';
             db.templates.forEach(temp => {
-                list.innerHTML += `<button class="primary" onclick="startWorkout(${temp.id})">${temp.name}</button>`;
+                list.innerHTML += `
+                    <div class="flex-between card" style="padding: 10px 16px;">
+                        <button class="primary" style="margin:0; width:70%;" onclick="startWorkout(${temp.id})">${temp.name}</button>
+                        <div style="display:flex;">
+                            <button class="small-edit" onclick="renameTemplate(${temp.id})">✎</button>
+                            <button class="small-edit" style="background:rgba(255, 69, 58, 0.2); color:var(--red);" onclick="deleteTemplate(${temp.id})">X</button>
+                        </div>
+                    </div>
+                `;
             });
         }
 
-        // Opens a template and creates the input boxes
+        function createTemplate() {
+            const name = prompt("Workout Name (e.g., Leg Day):");
+            if(!name) return;
+            db.templates.push({ id: Date.now(), name: name, exercises: [] });
+            updateStorage();
+            renderTemplates();
+        }
+
+        function renameTemplate(id) {
+            const temp = db.templates.find(t => t.id === id);
+            const newName = prompt("Rename workout:", temp.name);
+            if(newName) { temp.name = newName; updateStorage(); renderTemplates(); }
+        }
+
+        function deleteTemplate(id) {
+            if(confirm("Delete this workout template?")) {
+                db.templates = db.templates.filter(t => t.id !== id);
+                updateStorage();
+                renderTemplates();
+            }
+        }
+
+        // --- WORKOUT ENGINE ---
         function startWorkout(templateId) {
             const template = db.templates.find(t => t.id === templateId);
             document.getElementById('active-workout-title').innerText = template.name;
             
-            const blocksDiv = document.getElementById('active-blocks');
-            blocksDiv.innerHTML = '';
-
-            template.exercises.forEach((exName, index) => {
-                const historyText = getLastLog(exName);
-                
-                blocksDiv.innerHTML += `
-                    <div class="card">
-                        <h2>${exName}</h2>
-                        <div class="history-text" id="history-${index}">${historyText}</div>
-                        
-                        <div class="flex-row">
-                            <div style="flex: 1;">
-                                <label>WEIGHT</label>
-                                <input type="number" id="weight-${index}" placeholder="0">
-                            </div>
-                            <div style="flex: 1;">
-                                <label>REPS</label>
-                                <input type="number" id="reps-${index}" placeholder="0">
-                            </div>
-                        </div>
-                        <button class="log-btn" onclick="logSet('${exName}', ${index})">Log Set</button>
-                        <div class="logged-sets" id="logs-${index}"></div>
-                    </div>
-                `;
+            // Build the Active State
+            currentWorkout.templateId = template.id;
+            currentWorkout.exercises = template.exercises.map(exName => {
+                return { name: exName, sets: [ { weight: "", reps: "", loggedId: null } ] };
             });
 
-            // Switch to workout screen
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('main-nav').classList.add('hidden');
             document.getElementById('workout-screen').classList.remove('hidden');
+            
+            renderActiveWorkout();
         }
 
-        // Saves a single set to the database
-        function logSet(exName, index) {
-            const weightInput = document.getElementById(`weight-${index}`);
-            const repsInput = document.getElementById(`reps-${index}`);
-            const weight = weightInput.value;
-            const reps = repsInput.value;
-
-            if (!reps) return alert("Please enter the reps!");
-
-            // Create data package
-            const newSet = {
-                id: Date.now(),
-                name: exName,
-                weight: weight || 0,
-                reps: reps,
-                date: new Date().toLocaleDateString()
-            };
+        function addExerciseToWorkout() {
+            const exName = prompt("New Exercise Name:");
+            if(!exName) return;
             
-            // Save to top of list
-            db.sets.unshift(newSet);
+            // 1. Save to permanent database template
+            const template = db.templates.find(t => t.id === currentWorkout.templateId);
+            template.exercises.push(exName);
             updateStorage();
-
-            // Show success on screen instantly
-            document.getElementById(`logs-${index}`).innerHTML += `✓ ${weight}kg x ${reps}<br>`;
-            document.getElementById(`history-${index}`).innerText = `Last: ${weight}kg x ${reps} (Today)`;
             
-            // Clear inputs for next set
-            weightInput.value = '';
-            repsInput.value = '';
+            // 2. Push to current live screen
+            currentWorkout.exercises.push({ name: exName, sets: [ { weight: "", reps: "", loggedId: null } ] });
+            renderActiveWorkout();
         }
 
-        // Closes workout and returns to home
+        function renderActiveWorkout() {
+            const blocksDiv = document.getElementById('active-blocks');
+            blocksDiv.innerHTML = '';
+
+            currentWorkout.exercises.forEach((ex, exIndex) => {
+                let setsHTML = '';
+                
+                ex.sets.forEach((set, setIndex) => {
+                    const setNum = setIndex + 1;
+                    const historyText = getSetHistory(ex.name, setNum);
+                    const isLogged = set.loggedId !== null;
+                    const lockState = isLogged ? 'disabled' : '';
+                    const checkClass = isLogged ? 'checked' : '';
+                    
+                    setsHTML += `
+                        <div class="set-grid">
+                            <div class="set-index">${setNum}</div>
+                            <div class="set-history">${historyText}</div>
+                            <input type="number" class="set-input" placeholder="kg" id="w-${exIndex}-${setIndex}" value="${set.weight}" oninput="updateState(${exIndex}, ${setIndex}, 'weight', this.value)" ${lockState}>
+                            <input type="number" class="set-input" placeholder="reps" id="r-${exIndex}-${setIndex}" value="${set.reps}" oninput="updateState(${exIndex}, ${setIndex}, 'reps', this.value)" ${lockState}>
+                            <button class="check-btn ${checkClass}" onclick="toggleSetLog(${exIndex}, ${setIndex})">✓</button>
+                        </div>
+                    `;
+                });
+
+                blocksDiv.innerHTML += `
+                    <div class="card">
+                        <h2>${ex.name}</h2>
+                        <div class="set-grid set-grid-header">
+                            <div>SET</div><div>PREVIOUS</div><div>KG</div><div>REPS</div><div>✓</div>
+                        </div>
+                        ${setsHTML}
+                        <button class="ghost" onclick="addSetRow(${exIndex})">+ Add Set</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Live typing saver
+        function updateState(exIndex, setIndex, field, value) {
+            currentWorkout.exercises[exIndex].sets[setIndex][field] = value;
+        }
+
+        function addSetRow(exIndex) {
+            currentWorkout.exercises[exIndex].sets.push({ weight: "", reps: "", loggedId: null });
+            renderActiveWorkout();
+        }
+
+        // The Magic Checkmark Toggle
+        function toggleSetLog(exIndex, setIndex) {
+            const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
+            
+            if (setObj.loggedId) {
+                // UN-LOG IT (Edit Mode)
+                db.sets = db.sets.filter(s => s.id !== setObj.loggedId);
+                updateStorage();
+                setObj.loggedId = null;
+            } else {
+                // LOG IT (Save to DB)
+                const w = setObj.weight;
+                const r = setObj.reps;
+                if (!r) return alert("Please enter your reps.");
+                
+                const newId = Date.now();
+                db.sets.unshift({
+                    id: newId,
+                    name: currentWorkout.exercises[exIndex].name,
+                    weight: w || 0,
+                    reps: r,
+                    setNumber: setIndex + 1,
+                    date: new Date().toLocaleDateString()
+                });
+                updateStorage();
+                setObj.loggedId = newId;
+            }
+            renderActiveWorkout(); // Refresh UI to show locks
+        }
+
         function endWorkout() {
             document.getElementById('workout-screen').classList.add('hidden');
             document.getElementById('home-screen').classList.remove('hidden');
@@ -187,7 +271,7 @@
             refreshHistoryUI(); 
         }
 
-        // Updates the History tab list
+        // --- HISTORY ---
         function refreshHistoryUI() {
             const historyList = document.getElementById('history-list');
             historyList.innerHTML = '';
@@ -195,25 +279,24 @@
                 historyList.innerHTML += `
                     <div class="history-item">
                         <div>
-                            <strong style="color:var(--blue);">${set.name}</strong><br>
+                            <strong style="color:var(--blue);">${set.name}</strong> <span style="color:var(--gray); font-size:12px;">(Set ${set.setNumber})</span><br>
                             <span style="font-size:14px;">${set.weight}kg x ${set.reps} reps</span>
+                            <div style="font-size:12px; color:var(--gray);">${set.date}</div>
                         </div>
-                        <button class="danger" onclick="deleteSet(${set.id})">Delete</button>
+                        <button class="danger" onclick="deleteHistorySet(${set.id})">Delete</button>
                     </div>
                 `;
             });
         }
 
-        // Deletes a specific set
-        function deleteSet(idToDelete) {
-            if(confirm("Delete this set?")) {
+        function deleteHistorySet(idToDelete) {
+            if(confirm("Delete this set permanently?")) {
                 db.sets = db.sets.filter(set => set.id !== idToDelete);
                 updateStorage();
                 refreshHistoryUI();
             }
         }
 
-        // Handles the bottom navigation bar
         function switchTab(tab) {
             document.getElementById('home-screen').classList.add('hidden');
             document.getElementById('history-screen').classList.add('hidden');
@@ -224,7 +307,7 @@
             document.getElementById(`nav-${tab}`).classList.add('active');
         }
 
-        // Boot up the app when opened
+        // Initialize App
         renderTemplates();
         refreshHistoryUI();
     </script>
