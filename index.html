@@ -53,7 +53,7 @@
         .dict-item-name { font-size: 17px; font-weight: 600; color: #fff; }
         .dict-actions { display: flex; gap: 8px; justify-content: flex-start; }
         
-        /* Button Reordering Styles (Drag Removed) */
+        /* Button Reordering Styles */
         .template-ex-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .template-ex-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 10px 14px; border-radius: 12px; }
         .ex-name-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; }
@@ -201,10 +201,11 @@
             localStorage.setItem('gymDB', JSON.stringify(db));
         }
 
+        // FORMAT FIX: Hardcoded to English ('en-US') to override device location
         function formatDisplayDate(dateStr, timestamp) {
             let d = timestamp ? new Date(timestamp) : new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr; 
-            return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' });
+            return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
         }
 
         function getSetHistoryData(exName, setNum) {
@@ -234,17 +235,27 @@
         let manageTemplateId = null; 
         let currentAddExMode = 'type'; 
 
-        // --- TEMPLATES ---
+        // --- TEMPLATES (REDESIGNED FOR VISIBILITY) ---
         function renderTemplates() {
             const list = document.getElementById('template-list');
             list.innerHTML = '';
             db.templates.forEach(temp => {
+                const exList = temp.exercises.join(', ') || "No exercises yet";
                 list.innerHTML += `
-                    <div class="flex-between card" style="padding: 10px 16px;">
-                        <button class="primary" style="margin:0; width:70%;" onclick="startWorkout(${temp.id})">${temp.name}</button>
-                        <div style="display:flex;">
-                            <button class="small-edit" onclick="openManageTemplate(${temp.id})">✎</button>
-                            <button class="small-edit" style="background:rgba(255, 69, 58, 0.2); color:var(--red);" onclick="deleteTemplate(${temp.id})">X</button>
+                    <div class="card" style="padding: 16px;">
+                        <div class="flex-between" style="margin-bottom:5px;">
+                            <h2 style="margin:0; font-size: 22px;">${temp.name}</h2>
+                            <div style="display:flex; gap: 8px;">
+                                <button class="small-edit" onclick="renameTemplate(${temp.id})">Rename</button>
+                                <button class="small-edit" style="background:rgba(255, 69, 58, 0.2); color:var(--red);" onclick="deleteTemplate(${temp.id})">✕</button>
+                            </div>
+                        </div>
+                        <p style="color:var(--gray); font-size:14px; margin-top:0; margin-bottom:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${exList}
+                        </p>
+                        <div class="flex-row">
+                            <button class="primary" style="margin-bottom:0; flex:2;" onclick="startWorkout(${temp.id})">Start</button>
+                            <button class="secondary" style="margin-bottom:0; flex:1;" onclick="openManageTemplate(${temp.id})">Reorder</button>
                         </div>
                     </div>
                 `;
@@ -491,7 +502,8 @@
                     reps: r,
                     comment: setObj.comment || "",
                     setNumber: setIndex + 1,
-                    date: new Date().toLocaleDateString(),
+                    // FORMAT FIX: English date
+                    date: new Date().toLocaleDateString('en-US'),
                     timestamp: newId 
                 });
                 
