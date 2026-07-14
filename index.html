@@ -53,11 +53,10 @@
         .dict-item-name { font-size: 17px; font-weight: 600; color: #fff; }
         .dict-actions { display: flex; gap: 8px; justify-content: flex-start; }
         
-        /* Drag and Drop Reordering Styles */
-        .drag-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .drag-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 10px 14px; border-radius: 12px; touch-action: none; user-select: none; position: relative; }
-        .drag-item.dragging { opacity: 0.5; background: #3a3a3c; border: 1px dashed var(--blue); transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.4); z-index: 10; }
-        .drag-handle { font-size: 20px; color: var(--blue); padding-right: 10px; cursor: grab; height: 30px; display: flex; align-items: center; }
+        /* Button Reordering Styles (Drag Removed) */
+        .template-ex-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .template-ex-item { display: flex; align-items: center; justify-content: space-between; background: #2c2c2e; padding: 10px 14px; border-radius: 12px; }
+        .ex-name-label { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 10px; }
         
         /* Modals and Select layouts */
         .modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);}
@@ -159,9 +158,9 @@
     <div id="manage-template-modal" class="modal hidden">
         <div class="modal-content card" style="max-width:450px;">
             <h2 id="manage-template-title">Edit Template</h2>
-            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Use arrows <b>▲/▼</b> or drag <b>☰</b> to reorder exercises.</p>
+            <p style="font-size: 13px; color: var(--gray); margin-bottom: 15px;">Tap the <b>▲</b> and <b>▼</b> arrows to reorder exercises.</p>
             
-            <div id="drag-container" class="drag-list"></div>
+            <div id="template-ex-container" class="template-ex-list"></div>
             
             <div class="flex-row" style="margin-top:20px;">
                 <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
@@ -619,26 +618,23 @@
             alert(`Successfully merged into ${targetName}`);
         }
 
-        // --- MANAGE & REORDER TEMPLATE EXERCISES (ARROWS + TOUCH-DRAG) ---
+        // --- MANAGE & REORDER TEMPLATE EXERCISES (BUTTONS ONLY) ---
         function openManageTemplate(templateId) {
             manageTemplateId = templateId;
             const template = db.templates.find(t => t.id === templateId);
             
             document.getElementById('manage-template-title').innerText = `Edit: ${template.name}`;
             
-            const container = document.getElementById('drag-container');
+            const container = document.getElementById('template-ex-container');
             container.innerHTML = '';
 
             template.exercises.forEach((exName, index) => {
                 container.innerHTML += `
-                    <div class="drag-item" data-index="${index}">
-                        <div style="display:flex; align-items:center; width: 60%;">
-                            <span class="drag-handle">☰</span>
-                            <span style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${exName}</span>
-                        </div>
+                    <div class="template-ex-item" data-index="${index}">
+                        <span class="ex-name-label">${exName}</span>
                         <div style="display:flex; gap: 4px; align-items:center;">
-                            <button class="small-edit" style="padding: 6px 10px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, -1)">▲</button>
-                            <button class="small-edit" style="padding: 6px 10px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, 1)">▼</button>
+                            <button class="small-edit" style="padding: 6px 12px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, -1)">▲</button>
+                            <button class="small-edit" style="padding: 6px 12px; background: #333; color: white;" onclick="moveTemplateExercise(${index}, 1)">▼</button>
                             <button class="icon-btn" style="color:var(--red); font-size:18px; padding: 10px;" onclick="removeExFromTemplate(${index})">✕</button>
                         </div>
                     </div>
@@ -646,24 +642,20 @@
             });
 
             document.getElementById('manage-template-modal').classList.remove('hidden');
-            initTouchDrag();
         }
 
-        // NEW: Handles Arrow Button Swapping
         function moveTemplateExercise(index, direction) {
             const template = db.templates.find(t => t.id === manageTemplateId);
             const targetIndex = index + direction;
             
-            // Boundary checks
             if (targetIndex < 0 || targetIndex >= template.exercises.length) return;
             
-            // Swap elements in template memory
             const temp = template.exercises[index];
             template.exercises[index] = template.exercises[targetIndex];
             template.exercises[targetIndex] = temp;
             
             updateStorage();
-            openManageTemplate(manageTemplateId); // Instantly re-render
+            openManageTemplate(manageTemplateId); 
         }
 
         function removeExFromTemplate(index) {
@@ -673,12 +665,12 @@
         }
 
         function saveTemplateOrder() {
-            const container = document.getElementById('drag-container');
-            const items = container.querySelectorAll('.drag-item');
+            const container = document.getElementById('template-ex-container');
+            const items = container.querySelectorAll('.template-ex-item');
             
             const newOrder = [];
             items.forEach(item => {
-                const exName = item.querySelector('span:not(.drag-handle)').innerText;
+                const exName = item.querySelector('.ex-name-label').innerText;
                 newOrder.push(exName);
             });
 
@@ -687,57 +679,6 @@
             updateStorage();
             closeModals();
             renderTemplates();
-        }
-
-        function initTouchDrag() {
-            const container = document.getElementById('drag-container');
-            let dragEl = null;
-
-            container.addEventListener('touchstart', (e) => {
-                const handle = e.target.closest('.drag-handle');
-                if (!handle) return;
-
-                const item = e.target.closest('.drag-item');
-                dragEl = item;
-                
-                dragEl.classList.add('dragging');
-            }, { passive: true });
-
-            container.addEventListener('touchmove', (e) => {
-                if (!dragEl) return;
-                
-                const touch = e.touches[0];
-                const currentY = touch.clientY;
-                
-                e.preventDefault(); 
-                
-                const targetEl = getDragAfterElement(container, currentY);
-                if (targetEl == null) {
-                    container.appendChild(dragEl);
-                } else {
-                    container.insertBefore(dragEl, targetEl);
-                }
-            }, { passive: false }); 
-
-            container.addEventListener('touchend', () => {
-                if (!dragEl) return;
-                dragEl.classList.remove('dragging');
-                dragEl = null;
-            }, { passive: true });
-        }
-
-        function getDragAfterElement(container, y) {
-            const draggableElements = [...container.querySelectorAll('.drag-item:not(.dragging)')];
-
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = y - (box.top + box.height / 2);
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
         }
 
         // --- HISTORY ---
