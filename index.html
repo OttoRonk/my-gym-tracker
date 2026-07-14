@@ -11,7 +11,7 @@
         /* =========================================
            MODULE 1: STYLES
            ========================================= */
-        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --gray: #8e8e93; --red: #ff453a; --green: #32d74b; }
+        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --blue: #0A84FF; --gray: #8e8e93; --red: #ff453a; --green: #32d74b; --orange: #ff9f0a; }
         
         body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 90px; }
         h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
@@ -19,7 +19,6 @@
         
         .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
         
-        /* Buttons */
         button { cursor: pointer; }
         button.primary { width: 100%; padding: 14px; background-color: var(--blue); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 10px;}
         button.secondary { width: 100%; padding: 14px; background-color: #333; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 10px;}
@@ -27,12 +26,11 @@
         button.danger { padding: 8px 12px; background-color: rgba(255, 69, 58, 0.2); color: var(--red); border: none; border-radius: 6px; font-size: 14px; font-weight: bold; }
         button.small-edit { padding: 6px 12px; background: #333; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; margin-left: 10px;}
         
-        /* Layouts */
         .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         
-        /* The Set Grid System */
-        .set-grid { display: grid; grid-template-columns: 30px 1fr 60px 60px 40px; gap: 8px; align-items: center; margin-bottom: 10px; text-align: center; }
-        .set-grid-header { font-size: 11px; color: var(--gray); font-weight: bold; text-transform: uppercase; }
+        /* Updated Grid Layout to fit new buttons */
+        .set-grid { display: grid; grid-template-columns: 24px 1fr 50px 50px 24px 32px 24px; gap: 6px; align-items: center; margin-bottom: 10px; text-align: center; }
+        .set-grid-header { font-size: 10px; color: var(--gray); font-weight: bold; text-transform: uppercase; }
         
         .set-index { font-weight: bold; color: var(--gray); background: #333; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
         .set-history { font-size: 12px; color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
@@ -43,7 +41,9 @@
         .check-btn { width: 32px; height: 32px; border-radius: 6px; border: none; font-size: 16px; font-weight: bold; background: #333; color: white; margin: 0 auto;}
         .check-btn.checked { background: var(--green); color: black; }
         
-        /* Navigation Bar */
+        /* New Icon Button Styles */
+        .icon-btn { background: transparent; border: none; font-size: 16px; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0 auto; }
+        
         .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #121212; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #333; z-index: 100;}
         .nav-btn { color: var(--gray); background: none; border: none; font-size: 16px; font-weight: bold; }
         .nav-btn.active { color: var(--blue); }
@@ -96,23 +96,24 @@
             localStorage.setItem('gymDB', JSON.stringify(db));
         }
 
-        // Contextual History: Finds the exact set number from the most recent workout date
-        function getSetHistory(exName, setNum) {
+        // Contextual History now returns both the text and the previous comment
+        function getSetHistoryData(exName, setNum) {
             const logs = db.sets.filter(s => s.name.toLowerCase() === exName.toLowerCase());
-            if (logs.length === 0) return "-";
+            if (logs.length === 0) return { text: "-", comment: null };
             
-            const lastDate = logs[0].date; // Newest logs are always at the top of the array
+            const lastDate = logs[0].date; 
             const specificSet = logs.find(s => s.date === lastDate && s.setNumber === setNum);
             
-            return specificSet ? `${specificSet.weight}x${specificSet.reps}` : "-";
+            if (specificSet) {
+                return { text: `${specificSet.weight}x${specificSet.reps}`, comment: specificSet.comment || null };
+            }
+            return { text: "-", comment: null };
         }
-
 
         /* =========================================
            MODULE 4: STATE MANAGEMENT & LOGIC
            ========================================= */
         
-        // This temporary brain holds your workout while you type so you don't lose data
         let currentWorkout = { templateId: null, exercises: [] };
 
         // --- TEMPLATE MANAGEMENT ---
@@ -159,10 +160,16 @@
             const template = db.templates.find(t => t.id === templateId);
             document.getElementById('active-workout-title').innerText = template.name;
             
-            // Build the Active State
+            // Build the Active State (Now defaults to TWO sets)
             currentWorkout.templateId = template.id;
             currentWorkout.exercises = template.exercises.map(exName => {
-                return { name: exName, sets: [ { weight: "", reps: "", loggedId: null } ] };
+                return { 
+                    name: exName, 
+                    sets: [ 
+                        { weight: "", reps: "", comment: "", loggedId: null },
+                        { weight: "", reps: "", comment: "", loggedId: null }
+                    ] 
+                };
             });
 
             document.getElementById('home-screen').classList.add('hidden');
@@ -176,13 +183,19 @@
             const exName = prompt("New Exercise Name:");
             if(!exName) return;
             
-            // 1. Save to permanent database template
+            // Save to permanent database template
             const template = db.templates.find(t => t.id === currentWorkout.templateId);
             template.exercises.push(exName);
             updateStorage();
             
-            // 2. Push to current live screen
-            currentWorkout.exercises.push({ name: exName, sets: [ { weight: "", reps: "", loggedId: null } ] });
+            // Push to current live screen (Defaults to TWO sets)
+            currentWorkout.exercises.push({ 
+                name: exName, 
+                sets: [ 
+                    { weight: "", reps: "", comment: "", loggedId: null },
+                    { weight: "", reps: "", comment: "", loggedId: null }
+                ] 
+            });
             renderActiveWorkout();
         }
 
@@ -195,18 +208,27 @@
                 
                 ex.sets.forEach((set, setIndex) => {
                     const setNum = setIndex + 1;
-                    const historyText = getSetHistory(ex.name, setNum);
+                    const historyData = getSetHistoryData(ex.name, setNum);
+                    
                     const isLogged = set.loggedId !== null;
                     const lockState = isLogged ? 'disabled' : '';
                     const checkClass = isLogged ? 'checked' : '';
                     
+                    // Comment Icon Logic: Blue if commented today, Orange if commented last time, Gray otherwise
+                    let commentColor = "var(--gray)";
+                    if (set.comment) commentColor = "var(--blue)";
+                    else if (historyData.comment) commentColor = "var(--orange)";
+                    
                     setsHTML += `
                         <div class="set-grid">
                             <div class="set-index">${setNum}</div>
-                            <div class="set-history">${historyText}</div>
+                            <div class="set-history">${historyData.text}</div>
                             <input type="number" class="set-input" placeholder="kg" id="w-${exIndex}-${setIndex}" value="${set.weight}" oninput="updateState(${exIndex}, ${setIndex}, 'weight', this.value)" ${lockState}>
                             <input type="number" class="set-input" placeholder="reps" id="r-${exIndex}-${setIndex}" value="${set.reps}" oninput="updateState(${exIndex}, ${setIndex}, 'reps', this.value)" ${lockState}>
+                            
+                            <button class="icon-btn" style="color: ${commentColor};" onclick="handleComment(${exIndex}, ${setIndex})">💬</button>
                             <button class="check-btn ${checkClass}" onclick="toggleSetLog(${exIndex}, ${setIndex})">✓</button>
+                            <button class="icon-btn" style="color: var(--red);" onclick="removeSetRow(${exIndex}, ${setIndex})">✕</button>
                         </div>
                     `;
                 });
@@ -215,7 +237,7 @@
                     <div class="card">
                         <h2>${ex.name}</h2>
                         <div class="set-grid set-grid-header">
-                            <div>SET</div><div>PREVIOUS</div><div>KG</div><div>REPS</div><div>✓</div>
+                            <div>#</div><div>PREV</div><div>KG</div><div>REP</div><div></div><div></div><div></div>
                         </div>
                         ${setsHTML}
                         <button class="ghost" onclick="addSetRow(${exIndex})">+ Add Set</button>
@@ -224,27 +246,56 @@
             });
         }
 
-        // Live typing saver
         function updateState(exIndex, setIndex, field, value) {
             currentWorkout.exercises[exIndex].sets[setIndex][field] = value;
         }
 
         function addSetRow(exIndex) {
-            currentWorkout.exercises[exIndex].sets.push({ weight: "", reps: "", loggedId: null });
+            currentWorkout.exercises[exIndex].sets.push({ weight: "", reps: "", comment: "", loggedId: null });
             renderActiveWorkout();
         }
 
-        // The Magic Checkmark Toggle
+        // Removing a set row
+        function removeSetRow(exIndex, setIndex) {
+            const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
+            if (setObj.loggedId) {
+                alert("Please uncheck (✓) the set before deleting it.");
+                return;
+            }
+            currentWorkout.exercises[exIndex].sets.splice(setIndex, 1);
+            renderActiveWorkout();
+        }
+
+        // Handling the comment prompt
+        function handleComment(exIndex, setIndex) {
+            const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
+            const setNum = setIndex + 1;
+            const exName = currentWorkout.exercises[exIndex].name;
+            const pastData = getSetHistoryData(exName, setNum);
+            
+            let promptText = "Add a comment for this set (e.g., RPE 8, felt heavy):";
+            if (pastData.comment) {
+                promptText = `LAST TIME: "${pastData.comment}"\n\nAdd your comment for today:`;
+            }
+            
+            const newComment = prompt(promptText, setObj.comment || "");
+            
+            if (newComment !== null) { // null means they hit cancel
+                setObj.comment = newComment;
+                renderActiveWorkout(); 
+            }
+        }
+
         function toggleSetLog(exIndex, setIndex) {
             const setObj = currentWorkout.exercises[exIndex].sets[setIndex];
             
             if (setObj.loggedId) {
-                // UN-LOG IT (Edit Mode)
+                // UN-LOG
                 db.sets = db.sets.filter(s => s.id !== setObj.loggedId);
                 updateStorage();
                 setObj.loggedId = null;
             } else {
-                // LOG IT (Save to DB)
+                // LOG
                 const w = setObj.weight;
                 const r = setObj.reps;
                 if (!r) return alert("Please enter your reps.");
@@ -255,13 +306,14 @@
                     name: currentWorkout.exercises[exIndex].name,
                     weight: w || 0,
                     reps: r,
+                    comment: setObj.comment || "", // Save comment to DB
                     setNumber: setIndex + 1,
                     date: new Date().toLocaleDateString()
                 });
                 updateStorage();
                 setObj.loggedId = newId;
             }
-            renderActiveWorkout(); // Refresh UI to show locks
+            renderActiveWorkout(); 
         }
 
         function endWorkout() {
@@ -276,12 +328,19 @@
             const historyList = document.getElementById('history-list');
             historyList.innerHTML = '';
             db.sets.forEach(set => {
+                // Add the comment into the history view if it exists
+                let commentHTML = '';
+                if (set.comment) {
+                    commentHTML = `<div style="font-size:12px; color:var(--orange); font-style:italic; margin-top:4px;">💬 ${set.comment}</div>`;
+                }
+
                 historyList.innerHTML += `
                     <div class="history-item">
                         <div>
                             <strong style="color:var(--blue);">${set.name}</strong> <span style="color:var(--gray); font-size:12px;">(Set ${set.setNumber})</span><br>
                             <span style="font-size:14px;">${set.weight}kg x ${set.reps} reps</span>
-                            <div style="font-size:12px; color:var(--gray);">${set.date}</div>
+                            ${commentHTML}
+                            <div style="font-size:12px; color:var(--gray); margin-top:4px;">${set.date}</div>
                         </div>
                         <button class="danger" onclick="deleteHistorySet(${set.id})">Delete</button>
                     </div>
