@@ -7,6 +7,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gym Tracker</title>
     
+    <!-- FIREBASE CLOUD LIBRARIES -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <style>
         /* =========================================
            MODULE 1: STYLES
@@ -15,7 +20,7 @@
         
         body { font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 90px; }
         h1 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
-        h2 { font-size: 20px; margin: 0; }
+        h2 { font-size: 20px; margin: 0 0 15px 0; }
         
         .card { background-color: var(--card); border-radius: 16px; padding: 16px; margin-bottom: 15px; }
         
@@ -72,18 +77,47 @@
         .nav-btn.active { color: var(--blue); }
         .hidden { display: none !important; }
         .history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; }
+        
+        /* Top Bar Settings */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .user-email { font-size: 12px; color: var(--gray); }
     </style>
 </head>
 <body>
 
-    <div id="home-screen">
-        <div class="flex-between">
-            <h1>Workouts</h1>
-            <button class="ghost" style="width:auto;" onclick="createTemplate()">+ New</button>
+    <!-- =========================================
+         MODULE 2: SCREENS
+         ========================================= -->
+
+    <!-- SCREEN 0: LOGIN -->
+    <div id="login-screen" class="modal" style="background: var(--bg); z-index: 300;">
+        <div class="card" style="width: 100%; max-width: 400px; text-align: center;">
+            <h1 style="margin-top: 10px;">Gym Tracker</h1>
+            <p style="color:var(--gray); font-size:14px; margin-bottom:20px;">Your progress, securely synced to the cloud.</p>
+            
+            <input type="email" id="auth-email" placeholder="Email Address">
+            <input type="password" id="auth-password" placeholder="Password">
+            
+            <button class="primary" onclick="login()">Log In</button>
+            <button class="ghost" onclick="signup()">Create Free Account</button>
+            <p id="auth-error" style="color:var(--red); font-size:13px; margin-top:10px;"></p>
         </div>
+    </div>
+
+    <!-- SCREEN A: HOME / TEMPLATES -->
+    <div id="home-screen" class="hidden">
+        <div class="top-bar">
+            <h1>Workouts</h1>
+            <div style="text-align: right;">
+                <div class="user-email" id="display-email">Logged In</div>
+                <button class="ghost" style="padding:0; font-size:13px; color:var(--red);" onclick="logout()">Sign Out</button>
+            </div>
+        </div>
+        <button class="ghost" style="width:auto; padding:0 0 20px 0;" onclick="createTemplate()">+ New Workout Template</button>
         <div id="template-list"></div>
     </div>
 
+    <!-- SCREEN B: ACTIVE WORKOUT -->
     <div id="workout-screen" class="hidden">
         <div class="flex-between" style="margin-bottom: 20px;">
             <button class="ghost" style="width:auto; padding:0; text-align:left; font-size:18px;" onclick="cancelWorkout()">❮ Back</button>
@@ -97,43 +131,43 @@
         <button class="secondary" onclick="endWorkout()" style="margin-top: 20px;">Finish Workout</button>
     </div>
 
+    <!-- SCREEN C: DICTIONARY (EXERCISES) -->
     <div id="exercises-screen" class="hidden">
         <h1>Exercises</h1>
         <div class="card" style="padding: 8px 16px;" id="dictionary-list"></div>
     </div>
 
+    <!-- SCREEN D: HISTORY -->
     <div id="history-screen" class="hidden">
         <h1>All History</h1>
         <div class="card" id="history-list"></div>
     </div>
 
+    <!-- MODAL: ADD EXERCISE -->
     <div id="add-ex-modal" class="modal hidden">
         <div class="modal-content card">
             <h2>Add Exercise</h2>
-            
             <div class="toggle-btn-group">
                 <button class="toggle-tab active" id="tab-btn-type" onclick="switchAddExMode('type')">Type Name</button>
                 <button class="toggle-tab" id="tab-btn-list" onclick="switchAddExMode('list')">Show List</button>
             </div>
-
             <div id="mode-type-section">
                 <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">EXERCISE NAME</label>
                 <input type="text" id="new-ex-input" list="master-ex-list" placeholder="Type exercise name...">
                 <datalist id="master-ex-list"></datalist>
             </div>
-
             <div id="mode-list-section" class="hidden">
                 <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">SELECT FROM MASTER LIST</label>
                 <div class="scrollable-list" id="modal-select-list"></div>
             </div>
-            
             <div class="flex-row" style="margin-top:15px;">
                 <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
-                <button class="primary" style="margin-bottom:0;" onclick="confirmAddExercise()">Add to Workout</button>
+                <button class="primary" style="margin-bottom:0;" onclick="confirmAddExercise()">Add</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL: MERGE EXERCISES -->
     <div id="merge-modal" class="modal hidden">
         <div class="modal-content card">
             <h2>Merge Exercise</h2>
@@ -142,7 +176,6 @@
             </p>
             <label style="color:var(--gray); font-size:12px; font-weight:bold; margin-bottom:5px; display:block;">TARGET EXERCISE</label>
             <select id="merge-target-select"></select>
-            
             <div class="flex-row" style="margin-top:15px;">
                 <button class="secondary" style="margin-bottom:0;" onclick="closeModals()">Cancel</button>
                 <button class="primary" style="margin-bottom:0; background-color: var(--orange);" onclick="confirmMerge()">Merge</button>
@@ -158,30 +191,128 @@
 
     <script>
         /* =========================================
-           MODULE 3: DATABASE ENGINE
+           MODULE 3: FIREBASE & DATABASE ENGINE
            ========================================= */
-           
-        let db = JSON.parse(localStorage.getItem('gymDB')) || { 
-            sets: [], 
-            templates: [
-                { id: 1, name: "Push Day", exercises: ["Bench Press", "Overhead Press"] },
-                { id: 2, name: "Pull Day", exercises: ["Pull-ups", "Barbell Row"] }
-            ],
-            dictionary: []
+        
+        // YOUR LIVE FIREBASE CONFIGURATION
+        const firebaseConfig = {
+          apiKey: "AIzaSyAv0kDPr4h7K2_dAxEul5G4jqZGL_B_jo0",
+          authDomain: "my-gym-tracker-29645.firebaseapp.com",
+          projectId: "my-gym-tracker-29645",
+          storageBucket: "my-gym-tracker-29645.firebasestorage.app",
+          messagingSenderId: "484682129488",
+          appId: "1:484682129488:web:e68f0286caeec8da7bb155",
+          measurementId: "G-R3GZHKQSH4"
         };
 
-        if (!db.dictionary || db.dictionary.length === 0) {
-            let uniqueEx = new Set();
-            if(db.templates) db.templates.forEach(t => t.exercises.forEach(e => uniqueEx.add(e)));
-            if(db.sets) db.sets.forEach(s => uniqueEx.add(s.name));
-            db.dictionary = Array.from(uniqueEx).sort();
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const cloudDB = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Enable Offline Sync (Works in the gym without internet!)
+        cloudDB.enablePersistence().catch(err => {
+            console.log("Offline mode error:", err);
+        });
+
+        // The Master Database Object
+        let db = { sets: [], templates: [], dictionary: [] };
+
+        // --- AUTHENTICATION LOGIC ---
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // User is logged in! Hide login screen.
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('home-screen').classList.remove('hidden');
+                document.getElementById('main-nav').classList.remove('hidden');
+                document.getElementById('display-email').innerText = user.email;
+
+                // Load their specific cloud data
+                loadCloudData(user.uid);
+            } else {
+                // Not logged in. Show login screen.
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('home-screen').classList.add('hidden');
+                document.getElementById('main-nav').classList.add('hidden');
+            }
+        });
+
+        function login() {
+            const e = document.getElementById('auth-email').value;
+            const p = document.getElementById('auth-password').value;
+            auth.signInWithEmailAndPassword(e, p).catch(err => {
+                document.getElementById('auth-error').innerText = err.message;
+            });
+        }
+
+        function signup() {
+            const e = document.getElementById('auth-email').value;
+            const p = document.getElementById('auth-password').value;
+            auth.createUserWithEmailAndPassword(e, p).catch(err => {
+                document.getElementById('auth-error').innerText = err.message;
+            });
+        }
+
+        function logout() {
+            auth.signOut();
+            db = { sets: [], templates: [], dictionary: [] }; // Wipe local active memory
+        }
+
+        // --- CLOUD SYNC LOGIC ---
+        function loadCloudData(uid) {
+            cloudDB.collection("users").doc(uid).get().then(doc => {
+                if (doc.exists) {
+                    // Pull data from Cloud
+                    db = doc.data();
+                    
+                    // Failsafe format check
+                    if(!db.sets) db.sets = [];
+                    if(!db.templates) db.templates = [];
+                    if(!db.dictionary) db.dictionary = [];
+                } else {
+                    // NEW ACCOUNT! Check if they have local iPhone data we can migrate
+                    let localFallback = JSON.parse(localStorage.getItem('gymDB'));
+                    if (localFallback && (localFallback.sets.length > 0 || localFallback.templates.length > 0)) {
+                        db = localFallback; // Migrate iPhone data
+                        console.log("Migrating local data to cloud...");
+                    } else {
+                        // Completely fresh account
+                        db = { 
+                            sets: [], 
+                            templates: [
+                                { id: 1, name: "Push Day", exercises: ["Bench Press", "Overhead Press"] },
+                                { id: 2, name: "Pull Day", exercises: ["Pull-ups", "Barbell Row"] }
+                            ],
+                            dictionary: ["Bench Press", "Overhead Press", "Pull-ups", "Barbell Row"]
+                        };
+                    }
+                    updateStorage(); // Save initial state to cloud
+                }
+                
+                // Render everything now that data is loaded
+                renderTemplates();
+                renderExercisesTab();
+                refreshHistoryUI();
+            });
         }
 
         function updateStorage() {
+            // Keep dictionary sorted
             db.dictionary = Array.from(new Set(db.dictionary)).sort();
+            
+            // Backup to local storage just in case
             localStorage.setItem('gymDB', JSON.stringify(db));
+
+            // Push to Cloud
+            const user = auth.currentUser;
+            if (user) {
+                cloudDB.collection("users").doc(user.uid).set(db)
+                    .catch(err => console.error("Cloud Save Error:", err));
+            }
         }
 
+
+        // --- DATE FORMATTER ---
         function formatDisplayDate(dateStr, timestamp) {
             let d = timestamp ? new Date(timestamp) : new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr; 
@@ -426,19 +557,14 @@
             });
         }
 
-        // NEW: Handles shifting exercises up and down in real-time
         function moveActiveExercise(exIndex, direction) {
             const targetIndex = exIndex + direction;
-            
-            // Boundary checks (prevent moving above top or below bottom)
             if (targetIndex < 0 || targetIndex >= currentWorkout.exercises.length) return;
             
-            // 1. Swap in the active workout view
             const tempActive = currentWorkout.exercises[exIndex];
             currentWorkout.exercises[exIndex] = currentWorkout.exercises[targetIndex];
             currentWorkout.exercises[targetIndex] = tempActive;
             
-            // 2. Swap in the permanent database template to save it automatically
             const template = db.templates.find(t => t.id === currentWorkout.templateId);
             if (template) {
                 const tempEx = template.exercises[exIndex];
@@ -446,15 +572,12 @@
                 template.exercises[targetIndex] = tempEx;
                 updateStorage();
             }
-            
             renderActiveWorkout(); 
         }
 
-        // NEW: Remove exercise completely from active workout and template
         function removeActiveExercise(exIndex) {
             if(confirm("Remove this exercise from your workout?")) {
                 currentWorkout.exercises.splice(exIndex, 1);
-                
                 const template = db.templates.find(t => t.id === currentWorkout.templateId);
                 if (template) {
                     template.exercises.splice(exIndex, 1);
@@ -540,7 +663,7 @@
             document.getElementById('main-nav').classList.remove('hidden');
             refreshHistoryUI(); 
             renderExercisesTab();
-            renderTemplates(); // Refreshes the template preview lists on the home screen
+            renderTemplates(); 
         }
 
         // --- EXERCISE DICTIONARY MANAGEMENT ---
@@ -697,10 +820,6 @@
             document.getElementById(`nav-${tab}`).classList.add('active');
         }
 
-        // Initialize App
-        renderTemplates();
-        renderExercisesTab();
-        refreshHistoryUI();
     </script>
 </body>
 </html>
